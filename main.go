@@ -1,32 +1,36 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/go-chi/chi/v5"
+
+	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/middleware"
+	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/respuesta"
+	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/tickets"
 )
 
 func main() {
-	db, err := sql.Open("pgx",
-		"postgres://postgres:taller2026@localhost:5433/mesa_ayuda")
-	if err != nil {
-		log.Fatal(err)
-	}
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"estado":"vivo"}`)
+	r := chi.NewRouter()
+	r.Use(middleware.Registro)
+	r.Use(middleware.Recuperacion)
+
+	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
+		respuesta.Error(w, http.StatusNotFound, "ruta_inexistente",
+			"la ruta no existe")
 	})
-	http.HandleFunc("/salud", func(w http.ResponseWriter, r *http.Request) {
-		var version string
-		if err := db.QueryRow("select version()").Scan(&version); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, `{"bd":"sin conexion","detalle":%q}`, err.Error())
-			return
-		}
-		fmt.Fprintf(w, `{"bd":"ok","version":%q}`, version)
+	r.MethodNotAllowed(func(w http.ResponseWriter, req *http.Request) {
+		respuesta.Error(w, http.StatusMethodNotAllowed, "metodo_no_permitido",
+			"el método no está permitido en esta ruta")
 	})
-	log.Println("Servidor escuchando en :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	almacen := tickets.NuevoAlmacen()
+	r.Get("/tickets", almacen.Listar)
+	r.Post("/tickets", almacen.Crear)
+	r.Get("/tickets/{id}", almacen.Obtener)
+	r.Get("/explotar", tickets.Explotar)
+
+	log.Println("mesa de ayuda en :8080")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
