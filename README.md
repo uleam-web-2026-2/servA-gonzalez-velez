@@ -1,7 +1,4 @@
-# Mesa de ayuda
-
-> Reemplacen todo lo que está entre corchetes en su primer commit.
-> Este README es la puerta de entrada del repositorio: en la semana 1 otra pareja debe poder levantar el servidor siguiendo solo lo que dice aquí, y desde la semana 4 es la base de la integración continua.
+# RentCar
 
 **Hilo Servidor · ULEAM · Período 2026-2**
 Aplicaciones Web II (TDI-610) · Aplicación para el Servidor Web (IS-503)
@@ -15,20 +12,29 @@ Aplicaciones Web II (TDI-610) · Aplicación para el Servidor Web (IS-503)
 
 ## El producto
 
-Dominio de trabajo de la semana 1–2: mesa de ayuda. La ficha del negocio propio se completa cuando pase la compuerta de la semana 3.
+**RentCar** — API de alquiler de vehículos. Solo servidor (Go + Chi + GORM + PostgreSQL).
+
+Entidades: `Vehiculo` (1) — `Reserva` (N, con estados). El CRUD calificado es el de reservas.
 
 ## Cómo levantar el servidor
 
 Requisitos: Go 1.25+ y PostgreSQL (contenedor Docker, ver abajo).
 
+Si `go` no se reconoce en la terminal, el SDK está en `C:\Users\MSI BRAVO\go-sdk\bin` (ya se agregó al PATH de usuario: cierra y vuelve a abrir la terminal).
+
 ```bash
-go run .
+go run . -reset   # primera vez: crea tablas y semilla
+go run .          # arranques siguientes
 ```
+
+Guía completa de peticiones para Bruno/demo: [`docs/pruebas.md`](docs/pruebas.md).
 
 El servidor responde en `http://localhost:8080`.
 
-- `/` → `{"estado":"vivo"}`
-- `/salud` → `{"bd":"ok","version":"..."}` (requiere la base levantada)
+Rutas principales:
+
+- `POST/GET /reservas` · `GET/PUT/DELETE /reservas/{id}` · filtro `?estado=`
+- `GET /vehiculos` — listado con `Preload` de reservas
 
 ## Base de datos
 
@@ -37,10 +43,10 @@ El servidor responde en `http://localhost:8080`.
 
 ```bash
 docker run --name pg -e POSTGRES_PASSWORD=taller2026 -p 5433:5432 -d postgres:16
-docker exec pg psql -U postgres -c "create database mesa_ayuda;"
+docker exec pg psql -U postgres -c "CREATE DATABASE rentcar;"
 ```
 
-- Base de datos del proyecto: `mesa_ayuda`
+- Base de datos del proyecto: `rentcar`
 - Usuario: `postgres` · Contraseña: `taller2026` · Puerto host: `5433`
 
 ## Cómo correr las pruebas
@@ -61,6 +67,9 @@ Las pruebas corren también en la integración continua (pestaña Actions). Desd
 ## Estructura
 
 ```
-docs/ficha_negocio.md   → ficha del negocio (se entrega antes del día A de la semana 3)
-main.go                 → punto de entrada del servidor
+main.go                      → conexión, AutoMigrate, -reset, rutas
+internal/reservas/           → modelos, manejadores, semilla
+internal/respuesta/          → envoltura {"ok": …}
+internal/middleware/         → registro y recuperación
+docs/decisiones.md           → decisión D3 del taller S3
 ```
