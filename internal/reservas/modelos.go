@@ -7,7 +7,7 @@ type Vehiculo struct {
 	Modelo    string    `json:"Modelo"`
 	Tipo      string    `json:"Tipo"` // moto | auto | camioneta
 	PrecioDia float64   `json:"PrecioDia"`
-	Reservas  []Reserva `json:"Reservas,omitempty"`
+	Reservas  []Reserva `json:"Reservas"`
 }
 
 // Reserva es el lado de los muchos y la entidad con estados (CRUD del taller).
