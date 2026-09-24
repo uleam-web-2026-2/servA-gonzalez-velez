@@ -1,2 +1,7 @@
+# Secretos de esta máquina: nunca se suben.
+.env
+.env.atras
+
+# Binarios compilados.
 *.exe
 *.pdf

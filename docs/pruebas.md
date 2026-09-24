@@ -15,18 +15,20 @@ Herramienta recomendada: **Bruno** (o curl / Postman).
 ```bash
 docker start pg
 # si el contenedor no existe:
-docker run --name pg -e POSTGRES_PASSWORD=taller2026 -p 5433:5432 -d postgres:16
+docker run --name pg -e POSTGRES_PASSWORD=CAMBIE_ESTO -p 5433:5432 -d postgres:16
 docker exec pg psql -U postgres -c "CREATE DATABASE rentcar;"
 ```
 
-3. Arrancar el servidor desde la carpeta del repo:
+3. Copiar `.env.example` a `.env` y completar la contraseña real de PostgreSQL.
+
+4. Arrancar el servidor desde la carpeta del repo:
 
 ```bash
 go run . -reset
 ```
 
 En la terminal deben verse dos `CREATE TABLE` y el segundo con `CONSTRAINT "fk_vehiculos_reservas" FOREIGN KEY`.  
-Mensaje final: `RentCar en :8080`.
+Mensaje final: `escuchando en el puerto 8080`.
 
 Para arranques siguientes (sin borrar datos):
 

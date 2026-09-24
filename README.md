@@ -22,6 +22,9 @@ Requisitos: Go 1.25+ y PostgreSQL (contenedor Docker, ver abajo).
 
 Si `go` no se reconoce en la terminal, el SDK está en `C:\Users\MSI BRAVO\go-sdk\bin` (ya se agregó al PATH de usuario: cierra y vuelve a abrir la terminal).
 
+1. Copie `.env.example` a `.env` y complete la contraseña de PostgreSQL.
+2. Arranque:
+
 ```bash
 go run . -reset   # primera vez: crea tablas y semilla
 go run .          # arranques siguientes
@@ -29,7 +32,7 @@ go run .          # arranques siguientes
 
 Guía completa de peticiones para Bruno/demo: [`docs/pruebas.md`](docs/pruebas.md).
 
-El servidor responde en `http://localhost:8080`.
+El servidor responde en el puerto de `PUERTO` (por defecto `8080`).
 
 Rutas principales:
 
@@ -42,12 +45,11 @@ Rutas principales:
 - Con contenedor (puerto **5433** porque el 5432 local ya estaba ocupado):
 
 ```bash
-docker run --name pg -e POSTGRES_PASSWORD=taller2026 -p 5433:5432 -d postgres:16
+docker run --name pg -e POSTGRES_PASSWORD=CAMBIE_ESTO -p 5433:5432 -d postgres:16
 docker exec pg psql -U postgres -c "CREATE DATABASE rentcar;"
 ```
 
-- Base de datos del proyecto: `rentcar`
-- Usuario: `postgres` · Contraseña: `taller2026` · Puerto host: `5433`
+- La cadena de conexión (host, usuario, contraseña, `dbname`, puerto) va en `.env` — ver `.env.example`. No se sube al repositorio.
 
 ## Cómo correr las pruebas
 

@@ -2,7 +2,12 @@ module github.com/uleam-web-2026-2/servA-gonzalez-reina
 
 go 1.25.12
 
-require github.com/go-chi/chi/v5 v5.3.2
+require (
+	github.com/go-chi/chi/v5 v5.3.2
+	github.com/joho/godotenv v1.5.1
+	gorm.io/driver/postgres v1.6.3
+	gorm.io/gorm v1.31.2
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -13,6 +18,4 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
-	gorm.io/driver/postgres v1.6.3 // indirect
-	gorm.io/gorm v1.31.2 // indirect
 )

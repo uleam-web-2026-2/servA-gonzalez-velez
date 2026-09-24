@@ -9,6 +9,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/config"
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/middleware"
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/reservas"
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/respuesta"
@@ -18,11 +19,16 @@ func main() {
 	reset := flag.Bool("reset", false, "borra las tablas y arranca con la base vacía")
 	flag.Parse()
 
-	// Misma cadena del lab (Docker pg en 5433). Semana 4 se externaliza.
-	dsn := "host=localhost port=5433 user=postgres password=taller2026 dbname=rentcar"
-	db, err := gorm.Open(postgres.Open(dsn))
+	// 1. Leer el entorno. Si falta algo, se detiene aquí, con un mensaje claro.
+	cfg, err := config.Cargar()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("configuración: ", err)
+	}
+
+	// 2. Conectar y migrar.
+	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
+	if err != nil {
+		log.Fatal("no se pudo conectar: ", err)
 	}
 
 	if *reset {
@@ -30,13 +36,13 @@ func main() {
 		db.Migrator().DropTable(&reservas.Reserva{}, &reservas.Vehiculo{})
 	}
 
-	err = db.Debug().AutoMigrate(&reservas.Vehiculo{}, &reservas.Reserva{})
-	if err != nil {
-		log.Fatal(err)
+	if err := db.Debug().AutoMigrate(&reservas.Vehiculo{}, &reservas.Reserva{}); err != nil {
+		log.Fatal("no se pudo migrar: ", err)
 	}
 
 	reservas.Sembrar(db)
 
+	// 3. Rutas (igual que en la semana 3).
 	r := chi.NewRouter()
 	r.Use(middleware.Registro)
 	r.Use(middleware.Recuperacion)
@@ -52,6 +58,13 @@ func main() {
 
 	(&reservas.Manejador{DB: db}).Rutas(r)
 
-	log.Println("RentCar en :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	// 4. Servidor: el tiempo de espera se escribe UNA vez, en la configuración.
+	servidor := &http.Server{
+		Addr:         ":" + cfg.Puerto,
+		Handler:      r,
+		ReadTimeout:  cfg.TiempoEspera,
+		WriteTimeout: cfg.TiempoEspera,
+	}
+	log.Println("escuchando en el puerto", cfg.Puerto)
+	log.Fatal(servidor.ListenAndServe())
 }
