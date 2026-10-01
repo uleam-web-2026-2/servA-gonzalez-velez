@@ -5,3 +5,5 @@
 # Binarios compilados.
 *.exe
 *.pdf
+
+node_modules/

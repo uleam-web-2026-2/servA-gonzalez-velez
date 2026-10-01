@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,14 +16,20 @@ import (
 // Manejador guarda la conexión. Todas las rutas la leen con m.DB.
 type Manejador struct{ DB *gorm.DB }
 
-// Rutas registra las rutas de reservas y el listado de vehículos con Preload.
+// Rutas registra el CRUD de reservas y los listados del modelo.
 func (m *Manejador) Rutas(r chi.Router) {
 	r.Post("/reservas", m.crear)
 	r.Get("/reservas", m.listar)
 	r.Get("/reservas/{id}", m.verUno)
 	r.Put("/reservas/{id}", m.actualizar)
+	r.Patch("/reservas/{id}", m.cambiarEstado)
 	r.Delete("/reservas/{id}", m.borrar)
+
 	r.Get("/vehiculos", m.listarVehiculos)
+	r.Get("/sucursales", m.listarSucursales)
+	r.Get("/clientes", m.listarClientes)
+	r.Get("/usuarios", m.listarUsuarios)
+	r.Get("/pagos", m.listarPagos)
 }
 
 func (m *Manejador) crear(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +50,24 @@ func (m *Manejador) crear(w http.ResponseWriter, r *http.Request) {
 	if err := validarReserva(reserva); err != nil {
 		respuesta.Error(w, http.StatusUnprocessableEntity,
 			"datos_invalidos", err.Error())
+		return
+	}
+
+	if m.DB == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo validar")
+		return
+	}
+
+	var cliente Cliente
+	if err := m.DB.First(&cliente, reserva.ClienteID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respuesta.Error(w, http.StatusUnprocessableEntity,
+				"cliente_inexistente", "El cliente no existe")
+			return
+		}
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo validar el cliente")
 		return
 	}
 
@@ -70,10 +93,28 @@ func (m *Manejador) crear(w http.ResponseWriter, r *http.Request) {
 
 func (m *Manejador) listar(w http.ResponseWriter, r *http.Request) {
 	estado := r.URL.Query().Get("estado")
+
+	limit, offset, ok := leerPaginacion(w, r)
+	if !ok {
+		return
+	}
+
+	if m.DB == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo listar")
+		return
+	}
+
 	var lista []Reserva
 	q := m.DB.Debug()
 	if estado != "" {
 		q = q.Where("estado = ?", estado)
+	}
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	if offset > 0 {
+		q = q.Offset(offset)
 	}
 	if err := q.Find(&lista).Error; err != nil {
 		respuesta.Error(w, http.StatusInternalServerError,
@@ -86,6 +127,11 @@ func (m *Manejador) listar(w http.ResponseWriter, r *http.Request) {
 func (m *Manejador) verUno(w http.ResponseWriter, r *http.Request) {
 	id, ok := leerID(w, r)
 	if !ok {
+		return
+	}
+	if m.DB == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo consultar")
 		return
 	}
 	var reserva Reserva
@@ -106,6 +152,11 @@ func (m *Manejador) verUno(w http.ResponseWriter, r *http.Request) {
 func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 	id, ok := leerID(w, r)
 	if !ok {
+		return
+	}
+	if m.DB == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo consultar")
 		return
 	}
 
@@ -134,6 +185,12 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 			"estado_invalido", "Estado no válido")
 		return
 	}
+	if !transicionPermitida(existente.Estado, entrada.Estado) {
+		respuesta.Error(w, http.StatusUnprocessableEntity,
+			"transicion_prohibida",
+			"No se permite pasar de "+existente.Estado+" a "+entrada.Estado)
+		return
+	}
 
 	entrada.ID = existente.ID
 	entrada.VehiculoID = existente.VehiculoID // no se cambia la FK al actualizar
@@ -143,7 +200,19 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existente.Cliente = entrada.Cliente
+	var cliente Cliente
+	if err := m.DB.First(&cliente, entrada.ClienteID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respuesta.Error(w, http.StatusUnprocessableEntity,
+				"cliente_inexistente", "El cliente no existe")
+			return
+		}
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo validar el cliente")
+		return
+	}
+
+	existente.ClienteID = entrada.ClienteID
 	existente.FechaInicio = entrada.FechaInicio
 	existente.FechaFin = entrada.FechaFin
 	existente.Total = entrada.Total
@@ -157,9 +226,69 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 	respuesta.Exito(w, http.StatusOK, existente)
 }
 
+func (m *Manejador) cambiarEstado(w http.ResponseWriter, r *http.Request) {
+	id, ok := leerID(w, r)
+	if !ok {
+		return
+	}
+
+	var cuerpo struct {
+		Estado string `json:"Estado"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&cuerpo); err != nil {
+		respuesta.Error(w, http.StatusBadRequest,
+			"json_invalido", "El cuerpo no es un JSON válido")
+		return
+	}
+	if !estadosValidos[cuerpo.Estado] {
+		respuesta.Error(w, http.StatusUnprocessableEntity,
+			"estado_invalido", "Estado no válido")
+		return
+	}
+
+	if m.DB == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo consultar")
+		return
+	}
+
+	var existente Reserva
+	err := m.DB.First(&existente, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		respuesta.Error(w, http.StatusNotFound,
+			"no_encontrado", "No existe una reserva con ese id")
+		return
+	}
+	if err != nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo consultar")
+		return
+	}
+
+	if !transicionPermitida(existente.Estado, cuerpo.Estado) {
+		respuesta.Error(w, http.StatusUnprocessableEntity,
+			"transicion_prohibida",
+			"No se permite pasar de "+existente.Estado+" a "+cuerpo.Estado)
+		return
+	}
+
+	existente.Estado = cuerpo.Estado
+	if err := m.DB.Debug().Save(&existente).Error; err != nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo actualizar el estado")
+		return
+	}
+	respuesta.Exito(w, http.StatusOK, existente)
+}
+
 func (m *Manejador) borrar(w http.ResponseWriter, r *http.Request) {
 	id, ok := leerID(w, r)
 	if !ok {
+		return
+	}
+	if m.DB == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo borrar")
 		return
 	}
 	res := m.DB.Debug().Delete(&Reserva{}, id)
@@ -178,8 +307,12 @@ func (m *Manejador) borrar(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// listarVehiculos lista el lado del uno con sus reservas (Preload → 2 consultas).
 func (m *Manejador) listarVehiculos(w http.ResponseWriter, r *http.Request) {
+	if m.DB == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo listar vehículos")
+		return
+	}
 	var lista []Vehiculo
 	if err := m.DB.Debug().Preload("Reservas").Find(&lista).Error; err != nil {
 		respuesta.Error(w, http.StatusInternalServerError,
@@ -187,6 +320,36 @@ func (m *Manejador) listarVehiculos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respuesta.Exito(w, http.StatusOK, lista)
+}
+
+func (m *Manejador) listarSucursales(w http.ResponseWriter, r *http.Request) {
+	m.listarEntidad(w, &[]Sucursal{})
+}
+
+func (m *Manejador) listarClientes(w http.ResponseWriter, r *http.Request) {
+	m.listarEntidad(w, &[]Cliente{})
+}
+
+func (m *Manejador) listarUsuarios(w http.ResponseWriter, r *http.Request) {
+	m.listarEntidad(w, &[]Usuario{})
+}
+
+func (m *Manejador) listarPagos(w http.ResponseWriter, r *http.Request) {
+	m.listarEntidad(w, &[]Pago{})
+}
+
+func (m *Manejador) listarEntidad(w http.ResponseWriter, dest any) {
+	if m.DB == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo listar")
+		return
+	}
+	if err := m.DB.Debug().Find(dest).Error; err != nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"error_base", "No se pudo listar")
+		return
+	}
+	respuesta.Exito(w, http.StatusOK, dest)
 }
 
 func leerID(w http.ResponseWriter, r *http.Request) (uint, bool) {
@@ -199,10 +362,35 @@ func leerID(w http.ResponseWriter, r *http.Request) (uint, bool) {
 	return uint(n), true
 }
 
-// validarReserva aplica la regla extra de negocio (fase 2b).
+func leerPaginacion(w http.ResponseWriter, r *http.Request) (limit, offset int, ok bool) {
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	if limitStr != "" {
+		n, err := strconv.Atoi(limitStr)
+		if err != nil || n < 0 {
+			respuesta.Error(w, http.StatusBadRequest,
+				"paginacion_invalida", "limit debe ser un número entero no negativo")
+			return 0, 0, false
+		}
+		limit = n
+	}
+	if offsetStr != "" {
+		n, err := strconv.Atoi(offsetStr)
+		if err != nil || n < 0 {
+			respuesta.Error(w, http.StatusBadRequest,
+				"paginacion_invalida", "offset debe ser un número entero no negativo")
+			return 0, 0, false
+		}
+		offset = n
+	}
+	return limit, offset, true
+}
+
+// validarReserva aplica la regla extra de negocio (fechas y total).
 func validarReserva(r Reserva) error {
-	if strings.TrimSpace(r.Cliente) == "" {
-		return errors.New("El cliente no puede estar vacío")
+	if r.ClienteID == 0 {
+		return errors.New("Debe indicar un ClienteID válido")
 	}
 	if r.VehiculoID == 0 {
 		return errors.New("Debe indicar un VehiculoID válido")

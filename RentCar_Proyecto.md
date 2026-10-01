@@ -4,7 +4,7 @@
 
 RentCar será un sistema web de alquiler de vehículos desarrollado para la asignatura **Aplicaciones para el Servidor Web**.
 
-La aplicación simulará una empresa donde los clientes podrán consultar motos, autos y camionetas disponibles, revisar precios y realizar reservas desde una página web. El administrador podrá gestionar vehículos, clientes y reservas.
+La aplicación simulará una empresa donde los clientes podrán consultar autos y camionetas disponibles, revisar precios y realizar reservas desde una página web. El administrador podrá gestionar vehículos, clientes y reservas.
 
 ## 2. Objetivo
 
@@ -44,7 +44,7 @@ Crear una aplicación web conectada a un servidor desarrollado en Go y una base 
 
 ### Catálogo
 
-- Motos, autos y camionetas.
+- Autos y camionetas.
 - Marca y modelo.
 - Tipo de vehículo.
 - Precio por día.
