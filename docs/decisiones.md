@@ -43,3 +43,35 @@
 **Dónde empieza la base:** `internal/reservas/manejadores.go` — `m.DB.First(&vehiculo, reserva.VehiculoID)`.
 
 **Qué haría falta para probarla:** una base de datos de prueba (o un doble de `*gorm.DB`) que responda `ErrRecordNotFound` sin tocar PostgreSQL real; hoy las pruebas unitarias usan `DB: nil` y no pueden cruzar esa línea.
+
+---
+
+## Semana 7 · D1 · Qué nivel lleva cada ruta
+
+| Ruta | Nivel | Por qué |
+| --- | --- | --- |
+| `POST /login` | Pública | Es la puerta por la que se consigue el token; cualquier usuario no autenticado debe poder enviar credenciales para autenticarse. |
+| `GET /vehiculos` | Pública | Permite que potenciales clientes y visitantes exploren el catálogo de vehículos disponibles en la flota antes de registrarse o iniciar sesión. |
+| `GET /reservas` | Con sesión | Permite consultar reservas registradas en el sistema; solo usuarios autenticados deben tener acceso a las operaciones del negocio. |
+| `POST /reservas` | Con sesión | La creación de reservas requiere un usuario autenticado (cliente o agente) para vincular la solicitud con un usuario registrado y trazable. |
+| `GET /reservas/{id}` | Con sesión | Ver el detalle de una reserva específica requiere autenticación previa para salvaguardar la privacidad de las reservas. |
+| `PATCH /reservas/{id}` | Solo agente | El avance del flujo de negocio (confirmación de pago, entrega de vehículo, cierre de alquiler) requiere inspección física y financiera que solo el agente de sucursal está facultado a autorizar. |
+| `PUT /reservas/{id}` | Solo agente | La modificación integral de una reserva (fechas, cliente, monto) es una potestad operativa reservada a los agentes para evitar fraudes en tarifas pactadas. |
+| `DELETE /reservas/{id}` | Solo agente | La anulación o eliminación técnica de una reserva es de exclusiva competencia del personal de gestión de RentCar. |
+
+## Semana 7 · D2 · La ruta de un solo rol
+
+**Decisión:** `PATCH /reservas/{id}` es de acceso exclusivo para el rol `agente`.
+
+**Por qué:** En RentCar, el cambio de estado de una reserva refleja eventos de negocio críticos en la sucursal: verificación del pago o depósito bancario (`confirmada`), entrega física de las llaves del vehículo con contrato firmado (`en_curso`), y recepción y liquidación del vehículo devuelto (`finalizada`). Si un `cliente` pudiera cambiar el estado, podría marcar su propia reserva como confirmada sin haber pagado, o marcarla en curso sin autorización, evadiendo la verificación de pago y el control de la flota.
+
+**Qué descartamos:** Permitir que el `cliente` pueda cambiar su propio estado a `cancelada` directamente mediante `PATCH`. Lo descartamos para este taller para mantener la ruta con un único rol autorizado (`agente`), dejando que el cliente solicite la cancelación al agente o canalice la cancelación en una evolución futura mediante una ruta específica de autoservicio.
+
+## Semana 7 · D3 · La transición prohibida
+
+**Transición:** de `pendiente` a `finalizada` (y de `pendiente` a `en_curso`).
+
+**Por qué el negocio no la permite:** En RentCar no se puede marcar una reserva como `finalizada` directamente desde `pendiente`. Una reserva en estado `pendiente` aún no ha tenido su pago verificado ni ha pasado por la entrega física de la unidad en sucursal (`en_curso`). Permitir finalizar una reserva sin entrega previa corrompería el histórico de cobro, los contratos y los registros de kilometraje y devolución de la flota.
+
+**Qué responde y dónde se valida:** Responde código HTTP `422 Unprocessable Entity` con el mensaje `"de pendiente no se puede pasar a finalizada"` (o el estado solicitado). Se valida en el archivo `internal/reservas/estado.go`, dentro de la función `cambiarEstado` mediante la comprobación `if !puedePasar(t.Estado, pedido.Estado)`.
+

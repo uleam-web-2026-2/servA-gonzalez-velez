@@ -16,6 +16,7 @@ type Config struct {
 	DatabaseURL  string        // secreto: lleva la contraseña
 	Puerto       string        // configuración: cambia por máquina
 	TiempoEspera time.Duration // configuración: cuánto se espera antes de cortar
+	ClaveFirma   string        // secreto: firma los tokens JWT (mínimo 32 letras/números)
 }
 
 // Cargar lee .env si existe, después las variables del sistema.
@@ -32,6 +33,13 @@ func Cargar() (Config, error) {
 		return c, fmt.Errorf("falta DATABASE_URL " +
 			"(copie .env.example a .env y complete la contraseña)")
 	}
+
+	c.ClaveFirma = os.Getenv("CLAVE_FIRMA")
+	if c.ClaveFirma == "" {
+		return c, fmt.Errorf("falta CLAVE_FIRMA " +
+			"(copie .env.example a .env y defina una clave de al menos 32 caracteres)")
+	}
+
 
 	c.Puerto = os.Getenv("PUERTO")
 	if c.Puerto == "" {

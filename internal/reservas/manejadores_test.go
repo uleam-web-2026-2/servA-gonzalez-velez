@@ -5,18 +5,15 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // enrutador arma el servidor de prueba SIN base de datos (DB: nil).
 // Sirve porque todas las pruebas de este archivo responden ANTES
 // de la línea "desde aquí hace falta la base de datos".
 func enrutador() http.Handler {
-	r := chi.NewRouter()
-	(&Manejador{DB: nil}).Rutas(r)
-	return r
+	return enrutadorCon(rolDePrueba)
 }
+
 
 func TestCrear(t *testing.T) {
 	casos := []struct {

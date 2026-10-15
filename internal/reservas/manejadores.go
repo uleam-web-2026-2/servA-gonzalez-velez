@@ -11,26 +11,34 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/respuesta"
+	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/sesion"
 )
 
 // Manejador guarda la conexión. Todas las rutas la leen con m.DB.
 type Manejador struct{ DB *gorm.DB }
 
-// Rutas registra el CRUD de reservas y los listados del modelo.
-func (m *Manejador) Rutas(r chi.Router) {
-	r.Post("/reservas", m.crear)
-	r.Get("/reservas", m.listar)
-	r.Get("/reservas/{id}", m.verUno)
-	r.Put("/reservas/{id}", m.actualizar)
-	r.Patch("/reservas/{id}", m.cambiarEstado)
-	r.Delete("/reservas/{id}", m.borrar)
-
+// Rutas registra el CRUD de reservas y los listados del modelo agrupados por nivel.
+func (m *Manejador) Rutas(r chi.Router, tokens *sesion.Tokens) {
+	// Nivel 1 · Pública: cualquiera, sin token.
 	r.Get("/vehiculos", m.listarVehiculos)
-	r.Get("/sucursales", m.listarSucursales)
-	r.Get("/clientes", m.listarClientes)
-	r.Get("/usuarios", m.listarUsuarios)
-	r.Get("/pagos", m.listarPagos)
+
+	// Nivel 2 · Con sesión: antes del manejador corre el guardia.
+	conSesion := r.With(tokens.Autenticar)
+	conSesion.Get("/reservas", m.listar)
+	conSesion.Post("/reservas", m.crear)
+	conSesion.Get("/reservas/{id}", m.verUno)
+	conSesion.Get("/sucursales", m.listarSucursales)
+	conSesion.Get("/clientes", m.listarClientes)
+	conSesion.Get("/usuarios", m.listarUsuarios)
+	conSesion.Get("/pagos", m.listarPagos)
+
+	// Nivel 3 · Solo agentes: después del guardia se revisa el rol.
+	soloAgente := conSesion.With(sesion.SoloRol(sesion.RolAgente))
+	soloAgente.Put("/reservas/{id}", m.actualizar)
+	soloAgente.Patch("/reservas/{id}", m.cambiarEstado)
+	soloAgente.Delete("/reservas/{id}", m.borrar)
 }
+
 
 func (m *Manejador) crear(w http.ResponseWriter, r *http.Request) {
 	var reserva Reserva

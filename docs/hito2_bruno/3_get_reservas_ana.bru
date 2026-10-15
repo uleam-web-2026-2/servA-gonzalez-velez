@@ -1,0 +1,15 @@
+meta {
+  name: 3 - GET reservas con token de Ana (espera 200)
+  type: http
+  seq: 3
+}
+
+get {
+  url: http://localhost:8080/reservas
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: PEGAR_TOKEN_DE_ANA_AQUI
+}

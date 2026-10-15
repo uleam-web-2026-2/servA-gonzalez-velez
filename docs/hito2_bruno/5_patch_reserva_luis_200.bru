@@ -1,0 +1,21 @@
+meta {
+  name: 5 - PATCH reserva con token de Luis (espera 200)
+  type: http
+  seq: 5
+}
+
+patch {
+  url: http://localhost:8080/reservas/2
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: PEGAR_TOKEN_DE_LUIS_AQUI
+}
+
+body:json {
+  {
+    "estado": "confirmada"
+  }
+}

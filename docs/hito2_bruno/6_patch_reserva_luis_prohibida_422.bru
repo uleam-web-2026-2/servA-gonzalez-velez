@@ -1,0 +1,21 @@
+meta {
+  name: 6 - PATCH reserva transición prohibida con token de Luis (espera 422)
+  type: http
+  seq: 6
+}
+
+patch {
+  url: http://localhost:8080/reservas/1
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: PEGAR_TOKEN_DE_LUIS_AQUI
+}
+
+body:json {
+  {
+    "estado": "finalizada"
+  }
+}

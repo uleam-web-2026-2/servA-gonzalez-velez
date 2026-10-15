@@ -3,6 +3,6 @@
 extends:
   - recommended
 rules:
-  security-defined: off       # se enciende en el taller, cuando el contrato declare la sesión
   info-license: off           # un proyecto de clase no publica licencia
+
   no-server-example.com: off  # en clase el servidor corre en localhost
