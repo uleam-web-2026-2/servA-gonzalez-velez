@@ -1,0 +1,176 @@
+openapi: 3.1.0
+info:
+  title: RentCar API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /reservas:
+    get:
+      operationId: listarReservas
+      summary: Lista las reservas
+      responses:
+        "200":
+          description: Lista de reservas (puede ser una lista vacía)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Reserva" }
+        "400": { $ref: "#/components/responses/Error400" }
+    post:
+      operationId: crearReserva
+      summary: Crea una reserva
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReservaNueva" }
+      responses:
+        "201":
+          description: La reserva creada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reserva" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "422": { $ref: "#/components/responses/Error422" }
+  /reservas/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      operationId: verReserva
+      summary: Devuelve una reserva
+      responses:
+        "200":
+          description: La reserva consultada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reserva" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
+    patch:
+      operationId: cambiarEstadoReserva
+      summary: Cambia el estado de una reserva
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado: { $ref: "#/components/schemas/EstadoReserva" }
+      responses:
+        "200":
+          description: La reserva con su estado nuevo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reserva" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
+        "422": { $ref: "#/components/responses/Error422" }
+    put:
+      operationId: modificarReserva
+      summary: Modifica los datos de una reserva (no su estado)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReservaNueva" }
+      responses:
+        "200":
+          description: La reserva modificada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reserva" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
+        "422": { $ref: "#/components/responses/Error422" }
+    delete:
+      operationId: borrarReserva
+      summary: Borra una reserva
+      responses:
+        "204":
+          description: Borrado. No devuelve cuerpo
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
+  /login:
+    post:
+      operationId: iniciarSesion
+      summary: Entrega un token a cambio de usuario y contraseña
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuario, clave]
+              properties:
+                usuario: { type: string }
+                clave: { type: string }
+      responses:
+        "200":
+          description: El token de la sesión
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token: { type: string }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+components:
+  schemas:
+    EstadoReserva:
+      type: string
+      enum: [pendiente, confirmada, en_curso, finalizada, cancelada]
+    Reserva:
+      type: object
+      required: [ID, ClienteID, VehiculoID, FechaInicio, FechaFin, Total, Estado]
+      properties:
+        ID: { type: integer, readOnly: true }
+        ClienteID: { type: integer, example: 1 }
+        VehiculoID: { type: integer, example: 1 }
+        FechaInicio: { type: string, example: "2026-11-01" }
+        FechaFin: { type: string, example: "2026-11-04" }
+        Total: { type: number, example: 105.0 }
+        Estado: { $ref: "#/components/schemas/EstadoReserva" }
+    ReservaNueva:
+      type: object
+      required: [ClienteID, VehiculoID, FechaInicio, FechaFin, Total]
+      properties:
+        ClienteID: { type: integer, example: 1 }
+        VehiculoID: { type: integer, example: 1 }
+        FechaInicio: { type: string, example: "2026-11-01" }
+        FechaFin: { type: string, example: "2026-11-04" }
+        Total: { type: number, example: 105.0 }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+  responses:
+    Error400:
+      description: El servidor no entendió la petición
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Error401:
+      description: No se sabe quién hace la petición
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Error404:
+      description: No existe el elemento
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Error422:
+      description: Se entendió, pero un dato rompe una regla del negocio
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
