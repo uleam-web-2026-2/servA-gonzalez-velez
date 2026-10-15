@@ -53,6 +53,13 @@ func (m *Manejador) crear(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if reserva.Estado != "pendiente" {
+		respuesta.Error(w, http.StatusUnprocessableEntity,
+			"estado_invalido", "una reserva nueva nace en pendiente")
+		return
+	}
+
+
 	if m.DB == nil {
 		respuesta.Error(w, http.StatusInternalServerError,
 			"error_base", "No se pudo validar")
@@ -185,12 +192,6 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 			"estado_invalido", "Estado no válido")
 		return
 	}
-	if !transicionPermitida(existente.Estado, entrada.Estado) {
-		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"transicion_prohibida",
-			"No se permite pasar de "+existente.Estado+" a "+entrada.Estado)
-		return
-	}
 
 	entrada.ID = existente.ID
 	entrada.VehiculoID = existente.VehiculoID // no se cambia la FK al actualizar
@@ -216,66 +217,11 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 	existente.FechaInicio = entrada.FechaInicio
 	existente.FechaFin = entrada.FechaFin
 	existente.Total = entrada.Total
-	existente.Estado = entrada.Estado
+	// el estado solo cambia con PATCH
 
 	if err := m.DB.Debug().Save(&existente).Error; err != nil {
 		respuesta.Error(w, http.StatusInternalServerError,
 			"error_base", "No se pudo actualizar")
-		return
-	}
-	respuesta.Exito(w, http.StatusOK, existente)
-}
-
-func (m *Manejador) cambiarEstado(w http.ResponseWriter, r *http.Request) {
-	id, ok := leerID(w, r)
-	if !ok {
-		return
-	}
-
-	var cuerpo struct {
-		Estado string `json:"Estado"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&cuerpo); err != nil {
-		respuesta.Error(w, http.StatusBadRequest,
-			"json_invalido", "El cuerpo no es un JSON válido")
-		return
-	}
-	if !estadosValidos[cuerpo.Estado] {
-		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"estado_invalido", "Estado no válido")
-		return
-	}
-
-	if m.DB == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo consultar")
-		return
-	}
-
-	var existente Reserva
-	err := m.DB.First(&existente, id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		respuesta.Error(w, http.StatusNotFound,
-			"no_encontrado", "No existe una reserva con ese id")
-		return
-	}
-	if err != nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo consultar")
-		return
-	}
-
-	if !transicionPermitida(existente.Estado, cuerpo.Estado) {
-		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"transicion_prohibida",
-			"No se permite pasar de "+existente.Estado+" a "+cuerpo.Estado)
-		return
-	}
-
-	existente.Estado = cuerpo.Estado
-	if err := m.DB.Debug().Save(&existente).Error; err != nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo actualizar el estado")
 		return
 	}
 	respuesta.Exito(w, http.StatusOK, existente)
