@@ -73,5 +73,22 @@
 
 **Por qué el negocio no la permite:** En RentCar no se puede marcar una reserva como `finalizada` directamente desde `pendiente`. Una reserva en estado `pendiente` aún no ha tenido su pago verificado ni ha pasado por la entrega física de la unidad en sucursal (`en_curso`). Permitir finalizar una reserva sin entrega previa corrompería el histórico de cobro, los contratos y los registros de kilometraje y devolución de la flota.
 
-**Qué responde y dónde se valida:** Responde código HTTP `422 Unprocessable Entity` con el mensaje `"de pendiente no se puede pasar a finalizada"` (o el estado solicitado). Se valida en el archivo `internal/reservas/estado.go`, dentro de la función `cambiarEstado` mediante la comprobación `if !puedePasar(t.Estado, pedido.Estado)`.
+**Qué responde y dónde se valida:** Responde código HTTP `422 Unprocessable Entity` con el mensaje `"de pendiente no se puede pasar a finalizada"` (o el estado solicitado). La transición se decide con `puedePasar` en `internal/reservas/servicio.go`; el handler HTTP de `internal/reservas/estado.go` convierte el resultado en la respuesta.
 
+## Semana 8 · estructura
+
+La entidad principal, `Reserva`, se organiza en tres responsabilidades dentro de
+`internal/reservas/`:
+
+- `manejadores.go` y `estado.go` reciben las peticiones HTTP, validan su formato y
+  traducen los resultados a respuestas HTTP. No consultan GORM ni la base de datos.
+- `servicio.go` contiene reglas independientes del transporte, como la validación
+  de fechas y total y la máquina de transiciones de estado (`puedePasar`).
+- `repositorio.go` concentra las consultas y escrituras de PostgreSQL mediante GORM.
+  `Repositorio` es la interfaz usada por los manejadores y `RepositorioGorm` su
+  implementación actual.
+
+Elegimos esta separación porque permite probar las reglas de negocio sin HTTP y
+mantener las operaciones SQL en un único lugar. Si cambia la base de datos, se
+reemplaza la implementación del repositorio y se conserva la lógica de negocio y
+el manejo HTTP.

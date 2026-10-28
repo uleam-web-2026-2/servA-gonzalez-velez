@@ -5,17 +5,17 @@ meta {
 }
 
 patch {
-  url: http://localhost:8080/reservas/2
+  url: http://localhost:8080/reservas/{{reservaId}}
   body: json
   auth: bearer
 }
 
 auth:bearer {
-  token: PEGAR_TOKEN_DE_ANA_AQUI
+  token: {{tokenAna}}
 }
 
 body:json {
   {
-    "estado": "confirmada"
+    "estado": "en_curso"
   }
 }

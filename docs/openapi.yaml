@@ -19,17 +19,60 @@ paths:
             application/json:
               schema:
                 type: array
-                items:
-                  type: object
-                  required: [ID, Marca, Modelo, Tipo, PrecioDia, EstadoFlota]
-                  properties:
-                    ID: { type: integer, readOnly: true }
-                    Marca: { type: string, example: "Toyota" }
-                    Modelo: { type: string, example: "Corolla" }
-                    Tipo: { type: string, example: "auto" }
-                    PrecioDia: { type: number, example: 35.0 }
-                    EstadoFlota: { type: string, example: "disponible" }
+                items: { $ref: "#/components/schemas/Vehiculo" }
         "400": { $ref: "#/components/responses/Error400" }
+  /sucursales:
+    get:
+      operationId: listarSucursales
+      summary: Lista las sucursales
+      responses:
+        "200":
+          description: Lista de sucursales
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Sucursal" }
+        "401": { $ref: "#/components/responses/Error401" }
+  /clientes:
+    get:
+      operationId: listarClientes
+      summary: Lista los clientes
+      responses:
+        "200":
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Cliente" }
+        "401": { $ref: "#/components/responses/Error401" }
+  /usuarios:
+    get:
+      operationId: listarUsuarios
+      summary: Lista los usuarios del sistema
+      responses:
+        "200":
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Usuario" }
+        "401": { $ref: "#/components/responses/Error401" }
+  /pagos:
+    get:
+      operationId: listarPagos
+      summary: Lista los pagos
+      responses:
+        "200":
+          description: Lista de pagos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Pago" }
+        "401": { $ref: "#/components/responses/Error401" }
   /reservas:
     get:
       operationId: listarReservas
@@ -125,8 +168,14 @@ paths:
       operationId: borrarReserva
       summary: Borra una reserva
       responses:
-        "204":
-          description: Borrado. No devuelve cuerpo
+        "200":
+          description: Reserva eliminada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje: { type: string, example: "reserva eliminada" }
         "400": { $ref: "#/components/responses/Error400" }
         "401": { $ref: "#/components/responses/Error401" }
         "403": { $ref: "#/components/responses/Error403" }
@@ -168,26 +217,86 @@ components:
     EstadoReserva:
       type: string
       enum: [pendiente, confirmada, en_curso, finalizada, cancelada]
+    Sucursal:
+      type: object
+      required: [ID, Nombre, Ciudad, Direccion, Activa]
+      properties:
+        ID: { type: integer, readOnly: true }
+        Nombre: { type: string }
+        Ciudad: { type: string }
+        Direccion: { type: string }
+        Activa: { type: boolean }
+    Usuario:
+      type: object
+      required: [ID, SucursalID, Nombre, Correo, Rol]
+      properties:
+        ID: { type: integer, readOnly: true }
+        SucursalID: { type: integer }
+        Sucursal: { $ref: "#/components/schemas/Sucursal" }
+        Nombre: { type: string }
+        Correo: { type: string, format: email }
+        Rol: { type: string, enum: [administrador, agente] }
+    Cliente:
+      type: object
+      required: [ID, Nombre, Correo, Telefono, Cedula]
+      properties:
+        ID: { type: integer, readOnly: true }
+        Nombre: { type: string }
+        Correo: { type: string, format: email }
+        Telefono: { type: string }
+        Cedula: { type: string }
+    Vehiculo:
+      type: object
+      required: [ID, SucursalID, Marca, Modelo, Tipo, PrecioDia, EstadoFlota]
+      properties:
+        ID: { type: integer, readOnly: true }
+        SucursalID: { type: integer }
+        Sucursal: { $ref: "#/components/schemas/Sucursal" }
+        Marca: { type: string }
+        Modelo: { type: string }
+        Tipo: { type: string, enum: [auto, camioneta] }
+        PrecioDia: { type: number }
+        EstadoFlota: { type: string, enum: [disponible, alquilado, mantenimiento] }
+        Reservas:
+          type: array
+          items: { $ref: "#/components/schemas/Reserva" }
+    Pago:
+      type: object
+      required: [ID, ReservaID, Monto, Metodo, EstadoPago, Referencia, Creado]
+      properties:
+        ID: { type: integer, readOnly: true }
+        ReservaID: { type: integer }
+        Monto: { type: number }
+        Metodo: { type: string, enum: [transferencia, efectivo] }
+        EstadoPago: { type: string, enum: [por_verificar, verificado, rechazado] }
+        Referencia: { type: string }
+        Creado: { type: string, format: date-time }
     Reserva:
       type: object
       required: [ID, ClienteID, VehiculoID, FechaInicio, FechaFin, Total, Estado]
       properties:
         ID: { type: integer, readOnly: true }
         ClienteID: { type: integer, example: 1 }
+        Cliente: { $ref: "#/components/schemas/Cliente" }
         VehiculoID: { type: integer, example: 1 }
+        Vehiculo: { $ref: "#/components/schemas/Vehiculo" }
         FechaInicio: { type: string, example: "2026-11-01" }
         FechaFin: { type: string, example: "2026-11-04" }
         Total: { type: number, example: 105.0 }
         Estado: { $ref: "#/components/schemas/EstadoReserva" }
+        Pagos:
+          type: array
+          items: { $ref: "#/components/schemas/Pago" }
     ReservaNueva:
       type: object
-      required: [ClienteID, VehiculoID, FechaInicio, FechaFin, Total]
+      required: [ClienteID, VehiculoID, FechaInicio, FechaFin, Total, Estado]
       properties:
         ClienteID: { type: integer, example: 1 }
         VehiculoID: { type: integer, example: 1 }
-        FechaInicio: { type: string, example: "2026-11-01" }
-        FechaFin: { type: string, example: "2026-11-04" }
+        FechaInicio: { type: string, format: date, example: "2026-11-01" }
+        FechaFin: { type: string, format: date, example: "2026-11-04" }
         Total: { type: number, example: 105.0 }
+        Estado: { $ref: "#/components/schemas/EstadoReserva" }
     Error:
       type: object
       required: [error]

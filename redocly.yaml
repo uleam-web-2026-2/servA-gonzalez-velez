@@ -6,3 +6,4 @@ rules:
   info-license: off           # un proyecto de clase no publica licencia
 
   no-server-example.com: off  # en clase el servidor corre en localhost
+  security-defined: error

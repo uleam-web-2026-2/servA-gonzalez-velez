@@ -16,3 +16,7 @@ body:json {
     "clave": "ana-2026"
   }
 }
+
+script:post-response {
+  bru.setVar("tokenAna", res.getBody().token);
+}

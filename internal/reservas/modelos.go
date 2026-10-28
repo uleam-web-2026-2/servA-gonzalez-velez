@@ -82,28 +82,6 @@ var tiposValidos = map[string]bool{
 	"camioneta": true,
 }
 
-// transicionesPermite[de][a] = true
-var transicionesPermite = map[string]map[string]bool{
-	"pendiente": {
-		"confirmada": true,
-		"cancelada":  true,
-	},
-	"confirmada": {
-		"en_curso":  true,
-		"cancelada": true,
-	},
-	"en_curso": {
-		"finalizada": true,
-	},
-}
-
 func transicionPermitida(de, a string) bool {
-	if de == a {
-		return true
-	}
-	destino, ok := transicionesPermite[de]
-	if !ok {
-		return false
-	}
-	return destino[a]
+	return puedePasar(de, a)
 }

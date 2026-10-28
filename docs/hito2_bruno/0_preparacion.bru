@@ -1,0 +1,30 @@
+meta {
+  name: 0 - Preparación: crear reserva nueva
+  type: http
+  seq: 0
+}
+
+post {
+  url: http://localhost:8080/reservas
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{tokenAna}}
+}
+
+body:json {
+  {
+    "ClienteID": 1,
+    "VehiculoID": 1,
+    "FechaInicio": "2026-11-01",
+    "FechaFin": "2026-11-05",
+    "Total": 140.00,
+    "Estado": "pendiente"
+  }
+}
+
+script:post-response {
+  bru.setVar("reservaId", res.getBody().datos.ID);
+}

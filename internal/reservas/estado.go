@@ -4,30 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"slices"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"gorm.io/gorm"
 
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/respuesta"
 )
-
-// siguientes es la máquina de estados: desde cada estado, a cuáles se
-// puede pasar. Van TODOS los estados como clave; los estados finales
-// llevan la lista vacía.
-var siguientes = map[string][]string{
-	"pendiente":  {"confirmada", "cancelada"},
-	"confirmada": {"en_curso", "cancelada"},
-	"en_curso":   {"finalizada"},
-	"finalizada": {},
-	"cancelada":  {},
-}
-
-// puedePasar dice si la máquina de estados permite ir de un estado a otro.
-func puedePasar(de, a string) bool {
-	return slices.Contains(siguientes[de], a)
-}
 
 // cambiarEstado: PATCH /reservas/{id} con el cuerpo {"estado": "..."}.
 // 400 id o JSON · 422 estado que no existe · 404 no existe
@@ -46,15 +28,18 @@ func (m *Manejador) cambiarEstado(w http.ResponseWriter, r *http.Request) {
 		respuesta.Error(w, http.StatusBadRequest, "el cuerpo no es JSON válido")
 		return
 	}
-	if _, existe := siguientes[pedido.Estado]; !existe {
+	if !estadosValidos[pedido.Estado] {
 		respuesta.Error(w, http.StatusUnprocessableEntity,
 			"estado no permitido: "+pedido.Estado)
 		return
 	}
-	// ---- desde aquí hace falta la base de datos ----
-	var t Reserva
-	err = m.DB.First(&t, id).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if m.Repo == nil {
+		respuesta.Error(w, http.StatusInternalServerError,
+			"no se pudo leer")
+		return
+	}
+	reserva, err := m.Repo.BuscarReserva(uint(id))
+	if errors.Is(err, ErrNoEncontrado) {
 		respuesta.Error(w, http.StatusNotFound, "no existe la reserva")
 		return
 	}
@@ -63,15 +48,15 @@ func (m *Manejador) cambiarEstado(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// La regla del negocio: se compara el estado que TIENE con el que PIDEN.
-	if !puedePasar(t.Estado, pedido.Estado) {
+	if !puedePasar(reserva.Estado, pedido.Estado) {
 		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"de "+t.Estado+" no se puede pasar a "+pedido.Estado)
+			"de "+reserva.Estado+" no se puede pasar a "+pedido.Estado)
 		return
 	}
-	t.Estado = pedido.Estado
-	if err := m.DB.Save(&t).Error; err != nil {
+	reserva.Estado = pedido.Estado
+	if err := m.Repo.GuardarReserva(&reserva); err != nil {
 		respuesta.Error(w, http.StatusInternalServerError, "no se pudo guardar")
 		return
 	}
-	respuesta.JSON(w, http.StatusOK, t)
+	respuesta.JSON(w, http.StatusOK, reserva)
 }

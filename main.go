@@ -77,8 +77,7 @@ func main() {
 	login := &sesion.Manejador{DB: db, Tokens: tokens}
 	r.Post("/login", login.Login) // pública: es la puerta para conseguir el token
 
-	(&reservas.Manejador{DB: db}).Rutas(r, tokens)
-
+	(&reservas.Manejador{Repo: reservas.NuevoRepositorioGorm(db)}).Rutas(r, tokens)
 
 	servidor := &http.Server{
 		Addr:         ":" + cfg.Puerto,
