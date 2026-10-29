@@ -1,0 +1,22 @@
+meta {
+  name: Preparación: login con luis (guarda tokenLuis)
+  type: http
+  seq: 99
+}
+
+post {
+  url: http://localhost:8080/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "usuario": "luis",
+    "clave": "luis-2026"
+  }
+}
+
+script:post-response {
+  bru.setVar("tokenLuis", res.getBody().token);
+}
