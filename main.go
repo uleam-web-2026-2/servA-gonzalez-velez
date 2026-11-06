@@ -83,7 +83,8 @@ func main() {
 		log.Fatal("no se pudo obtener la conexión: ", err)
 	}
 	repo := almacen.NuevoReservasSqlc(almacen.NuevoReservas(db), conexion)
-	(&reservas.Manejador{Repo: repo}).Rutas(r, tokens)
+	servicio := reservas.NuevoServicio(repo)
+	(&reservas.Manejador{Servicio: servicio}).Rutas(r, tokens)
 
 	servidor := &http.Server{
 		Addr:         ":" + cfg.Puerto,

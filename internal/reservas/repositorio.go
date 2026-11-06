@@ -2,7 +2,15 @@ package reservas
 
 import "errors"
 
-var ErrNoEncontrado = errors.New("registro no encontrado")
+var (
+	ErrNoEncontrado            = errors.New("registro no encontrado")
+	ErrRepositorioNoDisponible = errors.New("repositorio no disponible")
+	ErrDatosInvalidos          = errors.New("datos inválidos")
+	ErrClienteInexistente      = errors.New("el cliente no existe")
+	ErrVehiculoInexistente     = errors.New("el vehículo no existe")
+	ErrEstadoInvalido          = errors.New("estado no permitido")
+	ErrTransicionProhibida     = errors.New("transición prohibida")
+)
 
 // Repositorio es la interfaz que define las operaciones de persistencia
 // que necesita el dominio de reservas. No depende de ningún ORM ni base de datos concreta.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -28,34 +29,21 @@ func (m *Manejador) cambiarEstado(w http.ResponseWriter, r *http.Request) {
 		respuesta.Error(w, http.StatusBadRequest, "el cuerpo no es JSON válido")
 		return
 	}
-	if !estadosValidos[pedido.Estado] {
-		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"estado no permitido: "+pedido.Estado)
+	reserva, err := m.Servicio.CambiarEstado(uint(id), pedido.Estado)
+	switch {
+	case errors.Is(err, ErrEstadoInvalido):
+		mensaje := strings.TrimPrefix(err.Error(), ErrEstadoInvalido.Error()+": ")
+		respuesta.Error(w, http.StatusUnprocessableEntity, mensaje)
 		return
-	}
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"no se pudo leer")
-		return
-	}
-	reserva, err := m.Repo.BuscarReserva(uint(id))
-	if errors.Is(err, ErrNoEncontrado) {
+	case errors.Is(err, ErrNoEncontrado):
 		respuesta.Error(w, http.StatusNotFound, "no existe la reserva")
 		return
-	}
-	if err != nil {
-		respuesta.Error(w, http.StatusInternalServerError, "no se pudo leer")
+	case errors.Is(err, ErrTransicionProhibida):
+		mensaje := strings.TrimPrefix(err.Error(), ErrTransicionProhibida.Error()+": ")
+		respuesta.Error(w, http.StatusUnprocessableEntity, mensaje)
 		return
-	}
-	// La regla del negocio: se compara el estado que TIENE con el que PIDEN.
-	if !puedePasar(reserva.Estado, pedido.Estado) {
-		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"de "+reserva.Estado+" no se puede pasar a "+pedido.Estado)
-		return
-	}
-	reserva.Estado = pedido.Estado
-	if err := m.Repo.GuardarReserva(&reserva); err != nil {
-		respuesta.Error(w, http.StatusInternalServerError, "no se pudo guardar")
+	case err != nil:
+		respuesta.Error(w, http.StatusInternalServerError, "no se pudo cambiar el estado")
 		return
 	}
 	respuesta.JSON(w, http.StatusOK, NuevaRespuesta(reserva))

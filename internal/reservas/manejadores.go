@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/sesion"
 )
 
-type Manejador struct{ Repo Repositorio }
+type Manejador struct{ Servicio *Servicio }
 
 // Rutas registra el CRUD de reservas y los listados del modelo agrupados por nivel.
 func (m *Manejador) Rutas(r chi.Router, tokens *sesion.Tokens) {
@@ -44,49 +45,24 @@ func (m *Manejador) crear(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reserva := pedido.aEntidad()
-	reserva.ID = 0
-	reserva.Estado = "pendiente"
-
-	if err := validarReserva(reserva); err != nil {
+	reserva, err := m.Servicio.Crear(pedido.aEntidad())
+	switch {
+	case errors.Is(err, ErrDatosInvalidos):
 		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"datos_invalidos", err.Error())
+			"datos_invalidos",
+			strings.TrimPrefix(err.Error(), ErrDatosInvalidos.Error()+": "))
 		return
-	}
-
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo validar")
-		return
-	}
-
-	clienteExiste, err := m.Repo.ClienteExiste(reserva.ClienteID)
-	if err != nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo validar el cliente")
-		return
-	}
-	if !clienteExiste {
+	case errors.Is(err, ErrClienteInexistente):
 		respuesta.Error(w, http.StatusUnprocessableEntity,
 			"cliente_inexistente", "El cliente no existe")
 		return
-	}
-
-	vehiculoExiste, err := m.Repo.VehiculoExiste(reserva.VehiculoID)
-	if err != nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo validar el vehículo")
-		return
-	}
-	if !vehiculoExiste {
+	case errors.Is(err, ErrVehiculoInexistente):
 		respuesta.Error(w, http.StatusUnprocessableEntity,
 			"vehiculo_inexistente", "El vehículo no existe")
 		return
-	}
-
-	if err := m.Repo.CrearReserva(&reserva); err != nil {
+	case err != nil:
 		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo guardar")
+			"error_base", "No se pudo guardar la reserva")
 		return
 	}
 	respuesta.Exito(w, http.StatusCreated, NuevaRespuesta(reserva))
@@ -100,13 +76,7 @@ func (m *Manejador) listar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo listar")
-		return
-	}
-
-	lista, err := m.Repo.ListarReservas(estado, limit, offset)
+	lista, err := m.Servicio.Listar(estado, limit, offset)
 	if err != nil {
 		respuesta.Error(w, http.StatusInternalServerError,
 			"error_base", "No se pudo listar")
@@ -120,12 +90,7 @@ func (m *Manejador) verUno(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo consultar")
-		return
-	}
-	reserva, err := m.Repo.BuscarReserva(id)
+	reserva, err := m.Servicio.Buscar(id)
 	if errors.Is(err, ErrNoEncontrado) {
 		respuesta.Error(w, http.StatusNotFound,
 			"no_encontrado", "No existe una reserva con ese id")
@@ -144,24 +109,6 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo consultar")
-		return
-	}
-
-	existente, err := m.Repo.BuscarReserva(id)
-	if errors.Is(err, ErrNoEncontrado) {
-		respuesta.Error(w, http.StatusNotFound,
-			"no_encontrado", "No existe una reserva con ese id")
-		return
-	}
-	if err != nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo consultar")
-		return
-	}
-
 	var pedido ReservaPeticion
 	if err := json.NewDecoder(r.Body).Decode(&pedido); err != nil {
 		respuesta.Error(w, http.StatusBadRequest,
@@ -169,40 +116,27 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entrada := pedido.aEntidad()
-	entrada.ID = existente.ID
-	entrada.VehiculoID = existente.VehiculoID // no se cambia la FK al actualizar
-	entrada.Estado = existente.Estado        // el estado solo cambia con PATCH
-
-	if err := validarReserva(entrada); err != nil {
+	actualizada, err := m.Servicio.Actualizar(id, pedido.aEntidad())
+	switch {
+	case errors.Is(err, ErrNoEncontrado):
+		respuesta.Error(w, http.StatusNotFound,
+			"no_encontrado", "No existe una reserva con ese id")
+		return
+	case errors.Is(err, ErrDatosInvalidos):
 		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"datos_invalidos", err.Error())
+			"datos_invalidos",
+			strings.TrimPrefix(err.Error(), ErrDatosInvalidos.Error()+": "))
 		return
-	}
-
-	clienteExiste, err := m.Repo.ClienteExiste(entrada.ClienteID)
-	if err != nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo validar el cliente")
-		return
-	}
-	if !clienteExiste {
+	case errors.Is(err, ErrClienteInexistente):
 		respuesta.Error(w, http.StatusUnprocessableEntity,
 			"cliente_inexistente", "El cliente no existe")
 		return
-	}
-
-	existente.ClienteID = entrada.ClienteID
-	existente.FechaInicio = entrada.FechaInicio
-	existente.FechaFin = entrada.FechaFin
-	existente.Total = entrada.Total
-
-	if err := m.Repo.GuardarReserva(&existente); err != nil {
+	case err != nil:
 		respuesta.Error(w, http.StatusInternalServerError,
 			"error_base", "No se pudo actualizar")
 		return
 	}
-	respuesta.Exito(w, http.StatusOK, NuevaRespuesta(existente))
+	respuesta.Exito(w, http.StatusOK, NuevaRespuesta(actualizada))
 }
 
 func (m *Manejador) borrar(w http.ResponseWriter, r *http.Request) {
@@ -210,12 +144,7 @@ func (m *Manejador) borrar(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo borrar")
-		return
-	}
-	eliminada, err := m.Repo.BorrarReserva(id)
+	eliminada, err := m.Servicio.Borrar(id)
 	if err != nil {
 		respuesta.Error(w, http.StatusInternalServerError,
 			"error_base", "No se pudo borrar")
@@ -232,12 +161,7 @@ func (m *Manejador) borrar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manejador) listarVehiculos(w http.ResponseWriter, r *http.Request) {
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo listar vehículos")
-		return
-	}
-	lista, err := m.Repo.ListarVehiculos()
+	lista, err := m.Servicio.ListarVehiculos()
 	if err != nil {
 		respuesta.Error(w, http.StatusInternalServerError,
 			"error_base", "No se pudo listar vehículos")
@@ -263,12 +187,7 @@ func (m *Manejador) listarPagos(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manejador) listarSucursalesRespuesta(w http.ResponseWriter) {
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError,
-			"error_base", "No se pudo listar")
-		return
-	}
-	lista, err := m.Repo.ListarSucursales()
+	lista, err := m.Servicio.ListarSucursales()
 	if err != nil {
 		respuesta.Error(w, http.StatusInternalServerError,
 			"error_base", "No se pudo listar")
@@ -278,11 +197,7 @@ func (m *Manejador) listarSucursalesRespuesta(w http.ResponseWriter) {
 }
 
 func (m *Manejador) listarClientesRespuesta(w http.ResponseWriter) {
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError, "error_base", "No se pudo listar")
-		return
-	}
-	lista, err := m.Repo.ListarClientes()
+	lista, err := m.Servicio.ListarClientes()
 	if err != nil {
 		respuesta.Error(w, http.StatusInternalServerError, "error_base", "No se pudo listar")
 		return
@@ -291,11 +206,7 @@ func (m *Manejador) listarClientesRespuesta(w http.ResponseWriter) {
 }
 
 func (m *Manejador) listarUsuariosRespuesta(w http.ResponseWriter) {
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError, "error_base", "No se pudo listar")
-		return
-	}
-	lista, err := m.Repo.ListarUsuarios()
+	lista, err := m.Servicio.ListarUsuarios()
 	if err != nil {
 		respuesta.Error(w, http.StatusInternalServerError, "error_base", "No se pudo listar")
 		return
@@ -304,11 +215,7 @@ func (m *Manejador) listarUsuariosRespuesta(w http.ResponseWriter) {
 }
 
 func (m *Manejador) listarPagosRespuesta(w http.ResponseWriter) {
-	if m.Repo == nil {
-		respuesta.Error(w, http.StatusInternalServerError, "error_base", "No se pudo listar")
-		return
-	}
-	lista, err := m.Repo.ListarPagos()
+	lista, err := m.Servicio.ListarPagos()
 	if err != nil {
 		respuesta.Error(w, http.StatusInternalServerError, "error_base", "No se pudo listar")
 		return

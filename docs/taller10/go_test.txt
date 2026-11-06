@@ -1,0 +1,9 @@
+?   	github.com/uleam-web-2026-2/servA-gonzalez-reina	[no test files]
+?   	github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/almacen	[no test files]
+?   	github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/almacen/filas	[no test files]
+ok  	github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/config	(cached)
+?   	github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/middleware	[no test files]
+ok  	github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/reservas	(cached)
+?   	github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/respuesta	[no test files]
+?   	github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/sesion	[no test files]
+?   	github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/tickets	[no test files]

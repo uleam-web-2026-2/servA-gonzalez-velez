@@ -16,13 +16,13 @@ const rolDePrueba = sesion.RolAgente
 // tokensDePrueba firma con un secreto que solo existe en las pruebas.
 var tokensDePrueba = sesion.NuevosTokens("secreto-solo-de-las-pruebas")
 
-// enrutadorCon arma el servidor de prueba, SIN repositorio,
+// enrutadorCon arma el servidor de prueba, SIN conexión a una base,
 // con las mismas rutas y los mismos niveles que usa main.go.
 // Con un rol, todas las peticiones entran con el token de un usuario de
 // ese rol. Con "" entran sin token.
 func enrutadorCon(rol string) http.Handler {
 	r := chi.NewRouter()
-	(&Manejador{}).Rutas(r, tokensDePrueba) // el mismo Rutas de main.go
+	(&Manejador{Servicio: NuevoServicio(nil)}).Rutas(r, tokensDePrueba)
 	if rol == "" {
 		return r
 	}
