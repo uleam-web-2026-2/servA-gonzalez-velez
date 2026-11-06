@@ -58,5 +58,5 @@ func (m *Manejador) cambiarEstado(w http.ResponseWriter, r *http.Request) {
 		respuesta.Error(w, http.StatusInternalServerError, "no se pudo guardar")
 		return
 	}
-	respuesta.JSON(w, http.StatusOK, reserva)
+	respuesta.JSON(w, http.StatusOK, NuevaRespuesta(reserva))
 }

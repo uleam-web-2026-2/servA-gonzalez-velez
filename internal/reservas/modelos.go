@@ -46,16 +46,16 @@ type Vehiculo struct {
 
 // Reserva es el lado de los muchos y la entidad con estados (CRUD del taller).
 type Reserva struct {
-	ID          uint     `gorm:"primaryKey" json:"ID"`
-	ClienteID   uint     `gorm:"not null;index" json:"ClienteID"`
-	Cliente     Cliente  `json:"Cliente,omitempty"`
-	VehiculoID  uint     `gorm:"not null;index" json:"VehiculoID"`
-	Vehiculo    Vehiculo `json:"Vehiculo,omitempty"`
-	FechaInicio string   `gorm:"not null" json:"FechaInicio"` // YYYY-MM-DD
-	FechaFin    string   `gorm:"not null" json:"FechaFin"`
-	Total       float64  `gorm:"not null" json:"Total"`
-	Estado      string   `gorm:"not null" json:"Estado"`
-	Pagos       []Pago   `json:"Pagos,omitempty"`
+	ID          uint     `gorm:"primaryKey"`
+	ClienteID   uint     `gorm:"not null;index"`
+	Cliente     Cliente  `gorm:"foreignKey:ClienteID"`
+	VehiculoID  uint     `gorm:"not null;index"`
+	Vehiculo    Vehiculo `gorm:"foreignKey:VehiculoID"`
+	FechaInicio string   `gorm:"not null"` // YYYY-MM-DD
+	FechaFin    string   `gorm:"not null"`
+	Total       float64  `gorm:"not null"`
+	Estado      string   `gorm:"not null"`
+	Pagos       []Pago   `gorm:"foreignKey:ReservaID"`
 }
 
 // Pago es el comprobante de transferencia o efectivo ligado a una reserva.

@@ -27,11 +27,6 @@ func TestCrear(t *testing.T) {
 			codigo: http.StatusBadRequest,
 		},
 		{
-			nombre: "estado inventado responde 422",
-			cuerpo: `{"ClienteID":1,"VehiculoID":1,"FechaInicio":"2026-11-01","FechaFin":"2026-11-04","Total":10,"Estado":"inventado"}`,
-			codigo: http.StatusUnprocessableEntity,
-		},
-		{
 			nombre: "cliente id cero responde 422",
 			cuerpo: `{"ClienteID":0,"VehiculoID":1,"FechaInicio":"2026-11-01","FechaFin":"2026-11-04","Total":10,"Estado":"pendiente"}`,
 			codigo: http.StatusUnprocessableEntity,

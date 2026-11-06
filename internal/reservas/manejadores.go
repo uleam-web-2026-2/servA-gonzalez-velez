@@ -37,29 +37,20 @@ func (m *Manejador) Rutas(r chi.Router, tokens *sesion.Tokens) {
 }
 
 func (m *Manejador) crear(w http.ResponseWriter, r *http.Request) {
-	var reserva Reserva
-	if err := json.NewDecoder(r.Body).Decode(&reserva); err != nil {
+	var pedido ReservaPeticion
+	if err := json.NewDecoder(r.Body).Decode(&pedido); err != nil {
 		respuesta.Error(w, http.StatusBadRequest,
 			"json_invalido", "El cuerpo no es un JSON válido")
 		return
 	}
-	reserva.ID = 0
 
-	if !estadosValidos[reserva.Estado] {
-		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"estado_invalido", "Estado no válido")
-		return
-	}
+	reserva := pedido.aEntidad()
+	reserva.ID = 0
+	reserva.Estado = "pendiente"
 
 	if err := validarReserva(reserva); err != nil {
 		respuesta.Error(w, http.StatusUnprocessableEntity,
 			"datos_invalidos", err.Error())
-		return
-	}
-
-	if reserva.Estado != "pendiente" {
-		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"estado_invalido", "una reserva nueva nace en pendiente")
 		return
 	}
 
@@ -98,7 +89,7 @@ func (m *Manejador) crear(w http.ResponseWriter, r *http.Request) {
 			"error_base", "No se pudo guardar")
 		return
 	}
-	respuesta.Exito(w, http.StatusCreated, reserva)
+	respuesta.Exito(w, http.StatusCreated, NuevaRespuesta(reserva))
 }
 
 func (m *Manejador) listar(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +112,7 @@ func (m *Manejador) listar(w http.ResponseWriter, r *http.Request) {
 			"error_base", "No se pudo listar")
 		return
 	}
-	respuesta.Exito(w, http.StatusOK, lista)
+	respuesta.Exito(w, http.StatusOK, NuevasRespuestas(lista))
 }
 
 func (m *Manejador) verUno(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +136,7 @@ func (m *Manejador) verUno(w http.ResponseWriter, r *http.Request) {
 			"error_base", "No se pudo consultar")
 		return
 	}
-	respuesta.Exito(w, http.StatusOK, reserva)
+	respuesta.Exito(w, http.StatusOK, NuevaRespuesta(reserva))
 }
 
 func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
@@ -171,21 +162,18 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var entrada Reserva
-	if err := json.NewDecoder(r.Body).Decode(&entrada); err != nil {
+	var pedido ReservaPeticion
+	if err := json.NewDecoder(r.Body).Decode(&pedido); err != nil {
 		respuesta.Error(w, http.StatusBadRequest,
 			"json_invalido", "El cuerpo no es un JSON válido")
 		return
 	}
 
-	if !estadosValidos[entrada.Estado] {
-		respuesta.Error(w, http.StatusUnprocessableEntity,
-			"estado_invalido", "Estado no válido")
-		return
-	}
-
+	entrada := pedido.aEntidad()
 	entrada.ID = existente.ID
 	entrada.VehiculoID = existente.VehiculoID // no se cambia la FK al actualizar
+	entrada.Estado = existente.Estado        // el estado solo cambia con PATCH
+
 	if err := validarReserva(entrada); err != nil {
 		respuesta.Error(w, http.StatusUnprocessableEntity,
 			"datos_invalidos", err.Error())
@@ -208,14 +196,13 @@ func (m *Manejador) actualizar(w http.ResponseWriter, r *http.Request) {
 	existente.FechaInicio = entrada.FechaInicio
 	existente.FechaFin = entrada.FechaFin
 	existente.Total = entrada.Total
-	// el estado solo cambia con PATCH
 
 	if err := m.Repo.GuardarReserva(&existente); err != nil {
 		respuesta.Error(w, http.StatusInternalServerError,
 			"error_base", "No se pudo actualizar")
 		return
 	}
-	respuesta.Exito(w, http.StatusOK, existente)
+	respuesta.Exito(w, http.StatusOK, NuevaRespuesta(existente))
 }
 
 func (m *Manejador) borrar(w http.ResponseWriter, r *http.Request) {
