@@ -1,20 +1,22 @@
-package reservas
+package almacen
 
 import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/reservas"
 )
 
 // Sembrar carga datos de ejemplo solo si no hay sucursales.
 func Sembrar(db *gorm.DB) {
 	var total int64
-	db.Model(&Sucursal{}).Count(&total)
+	db.Model(&reservas.Sucursal{}).Count(&total)
 	if total > 0 {
 		return
 	}
 
-	sucursal := Sucursal{
+	sucursal := reservas.Sucursal{
 		Nombre:    "RentCar Manta Centro",
 		Ciudad:    "Manta",
 		Direccion: "Av. 24 y Calle 13",
@@ -22,20 +24,20 @@ func Sembrar(db *gorm.DB) {
 	}
 	db.Create(&sucursal)
 
-	usuarios := []Usuario{
+	usuarios := []reservas.Usuario{
 		{SucursalID: sucursal.ID, Nombre: "Jipson Velez", Correo: "jipson@rentcar.ec", Rol: "administrador"},
 		{SucursalID: sucursal.ID, Nombre: "Isaac Gonzalez", Correo: "isaac@rentcar.ec", Rol: "agente"},
 	}
 	db.Create(&usuarios)
 
-	clientes := []Cliente{
+	clientes := []reservas.Cliente{
 		{Nombre: "Ana Pérez", Correo: "ana@example.com", Telefono: "0991111111", Cedula: "1310000001"},
 		{Nombre: "Luis Mora", Correo: "luis@example.com", Telefono: "0992222222", Cedula: "1310000002"},
 		{Nombre: "Carla Ruiz", Correo: "carla@example.com", Telefono: "0993333333", Cedula: "1310000003"},
 	}
 	db.Create(&clientes)
 
-	vehiculos := []Vehiculo{
+	vehiculos := []reservas.Vehiculo{
 		{
 			SucursalID:  sucursal.ID,
 			Marca:       "Toyota",
@@ -63,7 +65,7 @@ func Sembrar(db *gorm.DB) {
 	}
 	db.Create(&vehiculos)
 
-	reservas := []Reserva{
+	reservasLista := []reservas.Reserva{
 		{
 			ClienteID:   clientes[0].ID,
 			VehiculoID:  vehiculos[0].ID,
@@ -89,11 +91,11 @@ func Sembrar(db *gorm.DB) {
 			Estado:      "en_curso",
 		},
 	}
-	db.Create(&reservas)
+	db.Create(&reservasLista)
 
-	pagos := []Pago{
+	pagos := []reservas.Pago{
 		{
-			ReservaID:  reservas[0].ID,
+			ReservaID:  reservasLista[0].ID,
 			Monto:      105,
 			Metodo:     "transferencia",
 			EstadoPago: "verificado",
@@ -101,7 +103,7 @@ func Sembrar(db *gorm.DB) {
 			Creado:     time.Date(2026, 9, 19, 10, 0, 0, 0, time.UTC),
 		},
 		{
-			ReservaID:  reservas[1].ID,
+			ReservaID:  reservasLista[1].ID,
 			Monto:      70,
 			Metodo:     "transferencia",
 			EstadoPago: "por_verificar",

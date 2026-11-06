@@ -9,6 +9,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/almacen"
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/config"
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/middleware"
 	"github.com/uleam-web-2026-2/servA-gonzalez-reina/internal/reservas"
@@ -54,7 +55,7 @@ func main() {
 		log.Fatal("no se pudo migrar: ", err)
 	}
 
-	reservas.Sembrar(db)
+	almacen.Sembrar(db)
 
 	if err := sesion.Sembrar(db); err != nil {
 		log.Fatal("no se pudieron sembrar los usuarios: ", err)
@@ -77,7 +78,8 @@ func main() {
 	login := &sesion.Manejador{DB: db, Tokens: tokens}
 	r.Post("/login", login.Login) // pública: es la puerta para conseguir el token
 
-	(&reservas.Manejador{Repo: reservas.NuevoRepositorioGorm(db)}).Rutas(r, tokens)
+	repo := almacen.NuevoReservas(db)
+	(&reservas.Manejador{Repo: repo}).Rutas(r, tokens)
 
 	servidor := &http.Server{
 		Addr:         ":" + cfg.Puerto,
