@@ -91,3 +91,92 @@ Elegimos esta separación porque permite probar las reglas de negocio sin HTTP y
 mantener las operaciones SQL en un único lugar. Si cambia la base de datos, se
 reemplaza la implementación del repositorio y se conserva la lógica de negocio y
 el manejo HTTP.
+
+## Semana 10 · Fase 6 · transacciones
+
+### D1 · El caso
+
+El caso analizado es confirmar una reserva después de registrar su pago. En la
+base de datos se escribirían el nuevo estado `confirmada` en `Reserva` y el
+registro correspondiente en `Pago`. Si se guarda primero la reserva y falla la
+creación del pago, el sistema mostraría una reserva confirmada sin el pago que
+justifica esa confirmación. Una transacción debe hacer que ambas escrituras se
+confirmen juntas o que ninguna quede aplicada.
+
+En RentCar existen las entidades `Reserva` y `Pago`, pero el contrato actual no
+incluye el registro de pagos ni una operación que combine ambas escrituras: el
+cambio de estado guarda la reserva y `GET /pagos` solo consulta pagos; los datos
+de ejemplo se cargan durante el sembrado. Por eso este caso se analiza como
+diseño futuro y no se agrega como funcionalidad nueva en esta fase.
+
+### D2 · Opciones que consideramos
+
+1. **Unidad de Trabajo / Transactor en el repositorio.** El puerto de
+   persistencia expone una operación como `DentroDeTransaccion(fn)`, que entrega
+   al callback un repositorio ligado a la transacción. El servicio depende solo
+   de interfaces propias del dominio; no importa `gorm` ni `database/sql`.
+   Para las pruebas, un doble en memoria puede implementar el puerto y simular
+   éxito o error sin una base real. La implementación concreta se ocupa de
+   iniciar, confirmar o revertir la transacción.
+2. **Transacción gestionada desde el servicio con un contexto o ejecutor
+   transaccional.** El servicio coordina el inicio y las operaciones usando una
+   abstracción que represente el contexto/ejecutor. Si esa abstracción expone
+   directamente `*gorm.DB` o `*sql.Tx`, el servicio queda acoplado a
+   infraestructura y se incumple la separación requerida. Si se define como
+   interfaz propia, se puede probar con un doble, pero el servicio debe propagar
+   ese ejecutor a todas las operaciones y las pruebas deben simular también su
+   ciclo de vida; un `context.Context` por sí solo no hace atómicas las
+   escrituras.
+
+### D3 · La que elegimos y por qué
+
+Elegimos la Unidad de Trabajo en el límite del repositorio para una futura
+operación que requiera varias escrituras. Mantiene el servicio y sus pruebas
+independientes de GORM, `database/sql` y una base real, y concentra el ciclo de
+vida de la transacción en el adaptador de persistencia. El callback debe recibir
+un repositorio ligado a esa misma transacción y todas las escrituras del caso
+deben usarlo.
+
+Esta decisión es de diseño; no se agrega el puerto ni la operación de confirmar
+y cobrar ahora porque el caso no existe en el comportamiento actual de la API.
+
+### D4 · La que descartamos y por qué
+
+Descartamos que el servicio gestione directamente la transacción. Si recibe
+`*gorm.DB` o `*sql.Tx`, se filtran detalles de infraestructura a la capa de
+negocio y las pruebas requieren esos tipos concretos. Una abstracción propia
+podría evitar esa fuga, pero obligaría a pasar el ejecutor a cada operación y a
+simular su ciclo de vida en las pruebas; el límite transaccional seguiría
+repartido entre el servicio y el adaptador. La Unidad de Trabajo mantiene ese
+límite en persistencia.
+
+### D5 · Con sqlc
+
+En una implementación basada en `database/sql`, el adaptador obtiene un
+`*sql.Tx` desde la conexión `*sql.DB` (por ejemplo, con `BeginTx`) y crea un
+conjunto de consultas ligado a esa transacción con `q.WithTx(tx)`. Las consultas
+de ambas escrituras se ejecutan mediante ese conjunto; ante un error se revierte
+la transacción y, si ambas tienen éxito, se confirma. No se debe ejecutar una de
+las escrituras mediante `q` ligado a `*sql.DB` mientras la otra usa `q.WithTx`,
+porque entonces no pertenecerían a la misma unidad atómica.
+
+### D6 · Archivos
+
+Si se implementara el caso en el código, se revisarían o modificarían:
+
+- `internal/reservas/repositorio.go`, para declarar el puerto de Unidad de
+  Trabajo sin tipos de infraestructura.
+- `internal/reservas/servicio.go`, para orquestar el caso de uso usando el
+  repositorio transaccional recibido.
+- `internal/reservas/servicio_test.go`, para probar éxito y fallo con un doble
+  en memoria, sin base de datos real.
+- `internal/almacen/reservas.go` y `internal/almacen/reservas_sqlc.go`, para
+  implementar la unidad de trabajo en el adaptador y ligar sus operaciones a la
+  misma transacción; si SQLC necesitara consultas nuevas, también
+  `db/consultas.sql`, `db/schema.sql` y el código generado en
+  `internal/almacen/filas/`.
+
+En este análisis no se modifican los modelos, la base de datos, las rutas ni
+OpenAPI: `Pago` ya existe y no hace falta inventar tablas para explicar la
+atomicidad. Si el caso de uso se añadiera en el futuro, también habría que
+actualizar sus pruebas de integración y el contrato HTTP correspondiente.
