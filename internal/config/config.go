@@ -17,6 +17,8 @@ type Config struct {
 	Puerto       string        // configuración: cambia por máquina
 	TiempoEspera time.Duration // configuración: cuánto se espera antes de cortar
 	ClaveFirma   string        // secreto: firma los tokens JWT (mínimo 32 letras/números)
+	ClaveAna     string        // contraseña de ejemplo del usuario de pruebas ana
+	ClaveLuis    string        // contraseña de ejemplo del usuario de pruebas luis
 }
 
 // Cargar lee .env si existe, después las variables del sistema.
@@ -40,6 +42,17 @@ func Cargar() (Config, error) {
 			"(copie .env.example a .env y defina una clave de al menos 32 caracteres)")
 	}
 
+	c.ClaveAna = os.Getenv("CLAVE_ANA")
+	if c.ClaveAna == "" {
+		return c, fmt.Errorf("falta CLAVE_ANA " +
+			"(defina una contraseña de ejemplo para el usuario ana)")
+	}
+
+	c.ClaveLuis = os.Getenv("CLAVE_LUIS")
+	if c.ClaveLuis == "" {
+		return c, fmt.Errorf("falta CLAVE_LUIS " +
+			"(defina una contraseña de ejemplo para el usuario luis)")
+	}
 
 	c.Puerto = os.Getenv("PUERTO")
 	if c.Puerto == "" {

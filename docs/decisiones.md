@@ -4,11 +4,11 @@
 
 **Opciones:** que lo mande quien crea, o que el servidor ponga siempre el estado inicial.
 
-**Qué elegimos:** quien crea la reserva envía el estado, y el servidor valida que pertenezca a la lista de estados válidos (`estadosValidos`).
+**Qué elegimos:** el servidor asigna siempre el estado inicial `pendiente`. El DTO de entrada no acepta `ID` ni `Estado`; los cambios de estado se hacen aparte mediante `PATCH` y se validan con la máquina de transiciones.
 
-**Por qué, en nuestro negocio:** en RentCar una reserva puede originarse de distintas formas: una reserva web estándar ingresa como `pendiente` a la espera del comprobante de transferencia, mientras que una reserva tomada presencialmente en mostrador con garantía pagada puede registrarse directamente como `confirmada`. Permitir enviar el estado evita forzar peticiones HTTP extras para actualizar el estado inmediatamente después de crearla.
+**Por qué, en nuestro negocio:** en RentCar una reserva nueva debe esperar la verificación del pago antes de confirmarse. Fijar `pendiente` evita que un cliente se atribuya una confirmación o se salte las etapas del alquiler; un agente puede confirmarla después mediante `PATCH`.
 
-**Qué pasaría con la otra opción:** si el servidor forzara siempre `pendiente`, los operadores en agencia tendrían que hacer obligatoriamente un segundo llamado (`PATCH /reservas/{id}`) para confirmar la reserva, duplicando el tráfico y creando estados transitorios innecesarios.
+**Qué pasaría con la otra opción:** si el cliente pudiera enviar el estado, podría crear reservas ya confirmadas o en etapas posteriores sin que se hubieran verificado las condiciones del negocio.
 
 ---
 
@@ -28,7 +28,7 @@
 
 **Opciones:** que se puedan cambiar todos los campos (incluido VehiculoID), o fijar la clave foránea y solo permitir cambiar cliente, fechas, total y estado.
 
-**Qué elegimos:** al actualizar una reserva el `VehiculoID` queda fijo; únicamente se pueden actualizar `ClienteID`, fechas, total y estado. El cambio de estado también pasa por la máquina de transiciones (igual que el `PATCH`).
+**Qué elegimos:** al actualizar una reserva el `VehiculoID` y el estado quedan fijos; mediante `PUT` únicamente se pueden actualizar `ClienteID`, fechas y total. El cambio de estado se realiza por `PATCH` y pasa por la máquina de transiciones.
 
 **Por qué, en nuestro negocio:** una reserva representa un contrato pactado para una unidad específica (auto o camioneta). Si el cliente necesita otro vehículo, se cancela y se crea una nueva reserva.
 
@@ -84,9 +84,8 @@ La entidad principal, `Reserva`, se organiza en tres responsabilidades dentro de
   traducen los resultados a respuestas HTTP. No consultan GORM ni la base de datos.
 - `servicio.go` contiene reglas independientes del transporte, como la validación
   de fechas y total y la máquina de transiciones de estado (`puedePasar`).
-- `repositorio.go` concentra las consultas y escrituras de PostgreSQL mediante GORM.
-  `Repositorio` es la interfaz usada por los manejadores y `RepositorioGorm` su
-  implementación actual.
+- `repositorio.go` declara la interfaz `Repositorio`; los adaptadores concretos están
+  en `internal/almacen`.
 
 Elegimos esta separación porque permite probar las reglas de negocio sin HTTP y
 mantener las operaciones SQL en un único lugar. Si cambia la base de datos, se

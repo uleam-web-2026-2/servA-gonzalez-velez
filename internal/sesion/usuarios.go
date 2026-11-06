@@ -39,10 +39,10 @@ func (Usuario) TableName() string {
 // arranque: si cambian un rol o una contraseña aquí, al reiniciar el
 // servidor el usuario queda actualizado. Son usuarios y contraseñas
 // INVENTADOS, solo para probar: nunca una contraseña real.
-func Sembrar(db *gorm.DB) error {
+func Sembrar(db *gorm.DB, claveAna, claveLuis string) error {
 	ejemplos := []struct{ nombre, rol, clave string }{
-		{"ana", RolCliente, "ana-2026"}, // CAMBIEN el rol
-		{"luis", RolAgente, "luis-2026"}, // CAMBIEN el rol
+		{"ana", RolCliente, claveAna},
+		{"luis", RolAgente, claveLuis},
 	}
 	for _, e := range ejemplos {
 		// bcrypt calcula el resumen: eso es lo que se guarda.

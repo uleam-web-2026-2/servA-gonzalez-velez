@@ -22,7 +22,9 @@ Requisitos: Go 1.25+ y PostgreSQL (contenedor Docker, ver abajo).
 
 Si `go` no se reconoce en la terminal, el SDK está en `C:\Users\MSI BRAVO\go-sdk\bin` (ya se agregó al PATH de usuario: cierra y vuelve a abrir la terminal).
 
-1. Copie `.env.example` a `.env` y complete la contraseña de PostgreSQL.
+1. Copie `.env.example` a `.env` y cambie los valores de ejemplo: contraseña de
+   PostgreSQL, clave de firma JWT y credenciales ficticias de Ana y Luis. Las
+   credenciales de Bruno deben coincidir con `CLAVE_ANA` y `CLAVE_LUIS`.
 2. Arranque:
 
 ```bash

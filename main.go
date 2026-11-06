@@ -57,7 +57,7 @@ func main() {
 
 	almacen.Sembrar(db)
 
-	if err := sesion.Sembrar(db); err != nil {
+	if err := sesion.Sembrar(db, cfg.ClaveAna, cfg.ClaveLuis); err != nil {
 		log.Fatal("no se pudieron sembrar los usuarios: ", err)
 	}
 

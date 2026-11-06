@@ -10,7 +10,7 @@ paths:
   /vehiculos:
     get:
       operationId: listarVehiculos
-      summary: Lista el catálogo de vehículos disponibles
+      summary: Lista los vehículos de la flota
       security: []
       responses:
         "200":
@@ -18,9 +18,9 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/Vehiculo" }
-        "400": { $ref: "#/components/responses/Error400" }
+                $ref: "#/components/schemas/RespuestaVehiculos"
+        "500": { $ref: "#/components/responses/Error500" }
+        "405": { $ref: "#/components/responses/Error405" }
   /sucursales:
     get:
       operationId: listarSucursales
@@ -31,9 +31,9 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/Sucursal" }
+                $ref: "#/components/schemas/RespuestaSucursales"
         "401": { $ref: "#/components/responses/Error401" }
+        "500": { $ref: "#/components/responses/Error500" }
   /clientes:
     get:
       operationId: listarClientes
@@ -44,9 +44,9 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/Cliente" }
+                $ref: "#/components/schemas/RespuestaClientes"
         "401": { $ref: "#/components/responses/Error401" }
+        "500": { $ref: "#/components/responses/Error500" }
   /usuarios:
     get:
       operationId: listarUsuarios
@@ -57,9 +57,9 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/Usuario" }
+                $ref: "#/components/schemas/RespuestaUsuarios"
         "401": { $ref: "#/components/responses/Error401" }
+        "500": { $ref: "#/components/responses/Error500" }
   /pagos:
     get:
       operationId: listarPagos
@@ -70,23 +70,35 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: "#/components/schemas/Pago" }
+                $ref: "#/components/schemas/RespuestaPagos"
         "401": { $ref: "#/components/responses/Error401" }
+        "500": { $ref: "#/components/responses/Error500" }
   /reservas:
     get:
       operationId: listarReservas
       summary: Lista las reservas
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          schema: { type: string, example: pendiente }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
       responses:
         "200":
           description: Lista de reservas (puede ser una lista vacía)
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/Reserva" }
+              schema: { $ref: "#/components/schemas/RespuestaReservas" }
         "400": { $ref: "#/components/responses/Error400" }
         "401": { $ref: "#/components/responses/Error401" }
+        "500": { $ref: "#/components/responses/Error500" }
     post:
       operationId: crearReserva
       summary: Crea una reserva
@@ -100,10 +112,11 @@ paths:
           description: La reserva creada
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Reserva" }
+              schema: { $ref: "#/components/schemas/RespuestaReserva" }
         "400": { $ref: "#/components/responses/Error400" }
         "401": { $ref: "#/components/responses/Error401" }
         "422": { $ref: "#/components/responses/Error422" }
+        "500": { $ref: "#/components/responses/Error500" }
   /reservas/{id}:
     parameters:
       - name: id
@@ -118,10 +131,11 @@ paths:
           description: La reserva consultada
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Reserva" }
+              schema: { $ref: "#/components/schemas/RespuestaReserva" }
         "400": { $ref: "#/components/responses/Error400" }
         "401": { $ref: "#/components/responses/Error401" }
         "404": { $ref: "#/components/responses/Error404" }
+        "500": { $ref: "#/components/responses/Error500" }
     patch:
       operationId: cambiarEstadoReserva
       summary: Cambia el estado de una reserva
@@ -145,6 +159,7 @@ paths:
         "403": { $ref: "#/components/responses/Error403" }
         "404": { $ref: "#/components/responses/Error404" }
         "422": { $ref: "#/components/responses/Error422" }
+        "500": { $ref: "#/components/responses/Error500" }
     put:
       operationId: modificarReserva
       summary: Modifica los datos de una reserva (no su estado)
@@ -152,7 +167,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ReservaNueva" }
+            schema: { $ref: "#/components/schemas/ReservaActualizacion" }
       responses:
         "200":
           description: La reserva modificada
@@ -164,6 +179,7 @@ paths:
         "403": { $ref: "#/components/responses/Error403" }
         "404": { $ref: "#/components/responses/Error404" }
         "422": { $ref: "#/components/responses/Error422" }
+        "500": { $ref: "#/components/responses/Error500" }
     delete:
       operationId: borrarReserva
       summary: Borra una reserva
@@ -172,14 +188,12 @@ paths:
           description: Reserva eliminada
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  mensaje: { type: string, example: "reserva eliminada" }
+              schema: { $ref: "#/components/schemas/RespuestaEliminacion" }
         "400": { $ref: "#/components/responses/Error400" }
         "401": { $ref: "#/components/responses/Error401" }
         "403": { $ref: "#/components/responses/Error403" }
         "404": { $ref: "#/components/responses/Error404" }
+        "500": { $ref: "#/components/responses/Error500" }
   /login:
     post:
       operationId: iniciarSesion
@@ -207,6 +221,7 @@ paths:
                   token: { type: string }
         "400": { $ref: "#/components/responses/Error400" }
         "401": { $ref: "#/components/responses/Error401" }
+        "500": { $ref: "#/components/responses/Error500" }
 components:
   securitySchemes:
     sesion:
@@ -214,6 +229,70 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    RespuestaVehiculos:
+      type: object
+      required: [ok, datos]
+      properties:
+        ok: { type: boolean, const: true }
+        datos:
+          type: array
+          items: { $ref: "#/components/schemas/Vehiculo" }
+    RespuestaSucursales:
+      type: object
+      required: [ok, datos]
+      properties:
+        ok: { type: boolean, const: true }
+        datos:
+          type: array
+          items: { $ref: "#/components/schemas/Sucursal" }
+    RespuestaClientes:
+      type: object
+      required: [ok, datos]
+      properties:
+        ok: { type: boolean, const: true }
+        datos:
+          type: array
+          items: { $ref: "#/components/schemas/Cliente" }
+    RespuestaUsuarios:
+      type: object
+      required: [ok, datos]
+      properties:
+        ok: { type: boolean, const: true }
+        datos:
+          type: array
+          items: { $ref: "#/components/schemas/Usuario" }
+    RespuestaPagos:
+      type: object
+      required: [ok, datos]
+      properties:
+        ok: { type: boolean, const: true }
+        datos:
+          type: array
+          items: { $ref: "#/components/schemas/Pago" }
+    RespuestaReservas:
+      type: object
+      required: [ok, datos]
+      properties:
+        ok: { type: boolean, const: true }
+        datos:
+          type: array
+          items: { $ref: "#/components/schemas/Reserva" }
+    RespuestaReserva:
+      type: object
+      required: [ok, datos]
+      properties:
+        ok: { type: boolean, const: true }
+        datos: { $ref: "#/components/schemas/Reserva" }
+    RespuestaEliminacion:
+      type: object
+      required: [ok, datos]
+      properties:
+        ok: { type: boolean, const: true }
+        datos:
+          type: object
+          required: [mensaje]
+          properties:
+            mensaje: { type: string, const: "reserva eliminada" }
     EstadoReserva:
       type: string
       enum: [pendiente, confirmada, en_curso, finalizada, cancelada]
@@ -289,15 +368,39 @@ components:
           items: { $ref: "#/components/schemas/Pago" }
     ReservaNueva:
       type: object
-      required: [ClienteID, VehiculoID, FechaInicio, FechaFin, Total, Estado]
+      description: El estado inicial se asigna siempre como pendiente. Se acepta PascalCase o snake_case.
+      required: [ClienteID, VehiculoID, FechaInicio, FechaFin, Total]
       properties:
-        ClienteID: { type: integer, example: 1 }
-        VehiculoID: { type: integer, example: 1 }
+        ClienteID: { type: integer, minimum: 1, example: 1 }
+        VehiculoID: { type: integer, minimum: 1, example: 1 }
         FechaInicio: { type: string, format: date, example: "2026-11-01" }
         FechaFin: { type: string, format: date, example: "2026-11-04" }
-        Total: { type: number, example: 105.0 }
-        Estado: { $ref: "#/components/schemas/EstadoReserva" }
+        Total: { type: number, exclusiveMinimum: 0, example: 105.0 }
+    ReservaActualizacion:
+      type: object
+      description: VehiculoID y Estado no se modifican mediante PUT. Se acepta PascalCase o snake_case.
+      required: [ClienteID, FechaInicio, FechaFin, Total]
+      properties:
+        ClienteID: { type: integer, minimum: 1, example: 1 }
+        FechaInicio: { type: string, format: date, example: "2026-11-01" }
+        FechaFin: { type: string, format: date, example: "2026-11-04" }
+        Total: { type: number, exclusiveMinimum: 0, example: 105.0 }
     Error:
+      oneOf:
+        - $ref: "#/components/schemas/ErrorEnvoltura"
+        - $ref: "#/components/schemas/ErrorSimple"
+    ErrorEnvoltura:
+      type: object
+      required: [ok, error]
+      properties:
+        ok: { type: boolean, const: false }
+        error:
+          type: object
+          required: [codigo, mensaje]
+          properties:
+            codigo: { type: string }
+            mensaje: { type: string }
+    ErrorSimple:
       type: object
       required: [error]
       properties:
@@ -320,6 +423,16 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     Error404:
       description: No existe el elemento
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Error500:
+      description: El servidor no pudo completar la operación
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Error405:
+      description: El método HTTP no está permitido en esta ruta
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

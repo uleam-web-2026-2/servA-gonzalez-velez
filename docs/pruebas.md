@@ -46,7 +46,9 @@ go run . -reset
 
 **Tipos de vehículo:** solo `auto` y `camioneta`.
 
-**JSON:** claves con mayúscula del struct (`ClienteID`, `VehiculoID`, `FechaInicio`, `Estado`).
+**JSON de reservas:** POST y PUT reciben `ClienteID`, fechas y `Total` (el POST también
+recibe `VehiculoID`); no reciben `ID` ni `Estado`. PATCH cambia el estado con la clave
+`estado` en minúsculas. Las respuestas conservan los nombres en mayúscula del modelo.
 
 ---
 
@@ -58,12 +60,12 @@ go run . -reset
   "VehiculoID": 1,
   "FechaInicio": "2026-11-01",
   "FechaFin": "2026-11-04",
-  "Total": 105,
-  "Estado": "pendiente"
+  "Total": 105
 }
 ```
 
-**Esperado:** `201`.
+El servidor asigna el estado inicial `pendiente` e ignora cualquier `ID` o `Estado`
+enviado en el cuerpo. **Esperado:** `201`.
 
 ## 3. Cambiar estado — `PATCH /reservas/{id}`
 
