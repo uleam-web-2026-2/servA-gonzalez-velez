@@ -78,7 +78,11 @@ func main() {
 	login := &sesion.Manejador{DB: db, Tokens: tokens}
 	r.Post("/login", login.Login) // pública: es la puerta para conseguir el token
 
-	repo := almacen.NuevoReservas(db)
+	conexion, err := db.DB()
+	if err != nil {
+		log.Fatal("no se pudo obtener la conexión: ", err)
+	}
+	repo := almacen.NuevoReservasSqlc(almacen.NuevoReservas(db), conexion)
 	(&reservas.Manejador{Repo: repo}).Rutas(r, tokens)
 
 	servidor := &http.Server{
