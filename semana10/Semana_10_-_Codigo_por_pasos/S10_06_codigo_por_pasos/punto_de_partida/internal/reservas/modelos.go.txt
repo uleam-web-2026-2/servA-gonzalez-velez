@@ -1,0 +1,25 @@
+package reservas
+
+import "time"
+
+// Cancha es el lado del "uno".
+type Cancha struct {
+	ID       uint      `json:"id"`
+	Nombre   string    `json:"nombre"`
+	Reservas []Reserva `json:"reservas,omitempty"`
+}
+
+// Reserva es el lado del "muchos" y la entidad con estados.
+type Reserva struct {
+	ID       uint      `json:"id"`
+	CanchaID uint      `json:"cancha_id"`
+	Cliente  string    `json:"cliente"`
+	Inicio   time.Time `json:"inicio"`
+	Horas    int       `json:"horas"`
+	Estado   string    `json:"estado"`
+}
+
+// EstadosValidos: pendiente → confirmada → jugada / cancelada (el orden es de la U3).
+var EstadosValidos = map[string]bool{
+	"pendiente": true, "confirmada": true, "jugada": true, "cancelada": true,
+}

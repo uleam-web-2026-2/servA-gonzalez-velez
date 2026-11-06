@@ -1,0 +1,9 @@
+package reservas
+
+import "errors"
+
+var (
+	ErrNoExiste   = errors.New("no existe la reserva")
+	ErrInvalido   = errors.New("datos no válidos")
+	ErrTransicion = errors.New("transición no permitida")
+)

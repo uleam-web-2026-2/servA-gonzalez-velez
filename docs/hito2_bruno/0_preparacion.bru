@@ -26,5 +26,10 @@ body:json {
 }
 
 script:post-response {
-  bru.setVar("reservaId", res.getBody().datos.ID);
+  const body = res.getBody();
+  if (body && body.datos && body.datos.ID) {
+    bru.setVar("reservaId", body.datos.ID);
+  } else if (body && body.ID) {
+    bru.setVar("reservaId", body.ID);
+  }
 }

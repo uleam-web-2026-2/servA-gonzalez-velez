@@ -1,0 +1,8 @@
+var pedido ReservaPeticion
+if err := json.NewDecoder(r.Body).Decode(&pedido); err != nil {
+	respuesta.Error(w, http.StatusBadRequest, "el cuerpo no es JSON válido")
+	return
+}
+creado, err := m.Servicio.Crear(pedido.aEntidad())
+// ...
+respuesta.JSON(w, http.StatusCreated, nuevaRespuesta(creado))

@@ -1,0 +1,45 @@
+package almacen
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+
+	"canchas/internal/almacen/filas"
+	"canchas/internal/reservas"
+)
+
+type ReservasSqlc struct {
+	*Reservas
+	Conexion *sql.DB
+	q        *filas.Queries
+}
+
+var _ reservas.Repositorio = (*ReservasSqlc)(nil)
+
+func NuevoReservasSqlc(g *Reservas, c *sql.DB) *ReservasSqlc {
+	return &ReservasSqlc{Reservas: g, Conexion: c, q: filas.New(c)}
+}
+
+func (a *ReservasSqlc) Buscar(id uint) (reservas.Reserva, error) {
+	f, err := a.q.BuscarReserva(context.Background(), int64(id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return reservas.Reserva{}, reservas.ErrNoExiste
+	}
+	if err != nil {
+		return reservas.Reserva{}, err
+	}
+	return reservas.Reserva{ID: uint(f.ID), CanchaID: uint(f.CanchaID),
+		Cliente: f.Cliente, Inicio: f.Inicio, Horas: int(f.Horas),
+		Estado: f.Estado}, nil
+}
+
+func (a *ReservasSqlc) Guardar(r *reservas.Reserva) error {
+	n, err := a.q.GuardarReserva(context.Background(), filas.GuardarReservaParams{
+		ID: int64(r.ID), CanchaID: int64(r.CanchaID), Cliente: r.Cliente,
+		Inicio: r.Inicio, Horas: int64(r.Horas), Estado: r.Estado})
+	if err == nil && n == 0 {
+		return reservas.ErrNoExiste
+	}
+	return err
+}

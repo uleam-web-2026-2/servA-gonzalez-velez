@@ -1,0 +1,5 @@
+res, err := s.repo.Buscar(id)
+if err != nil {
+	return res, err
+}
+cambios.Estado = res.Estado // el estado solo cambia con PATCH

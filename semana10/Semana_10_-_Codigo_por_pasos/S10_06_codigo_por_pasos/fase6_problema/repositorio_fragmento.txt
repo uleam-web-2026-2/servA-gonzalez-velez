@@ -1,0 +1,3 @@
+// Lo que el ejemplo agrega para el problema de la fase 6.
+// Modelo: type Pago struct { ID uint; ReservaID uint; Monto int `gorm:"check:monto > 0"` }
+// Interfaz: CrearPago(p *Pago) error

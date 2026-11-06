@@ -1,0 +1,33 @@
+package transporte
+
+import (
+	"time"
+
+	"canchas/internal/reservas"
+)
+
+type ReservaPeticion struct {
+	CanchaID uint      `json:"cancha_id"`
+	Cliente  string    `json:"cliente"`
+	Inicio   time.Time `json:"inicio"`
+	Horas    int       `json:"horas"`
+}
+
+func (p ReservaPeticion) aEntidad() reservas.Reserva {
+	return reservas.Reserva{CanchaID: p.CanchaID, Cliente: p.Cliente,
+		Inicio: p.Inicio, Horas: p.Horas}
+}
+
+type ReservaRespuesta struct {
+	ID       uint      `json:"id"`
+	CanchaID uint      `json:"cancha_id"`
+	Cliente  string    `json:"cliente"`
+	Inicio   time.Time `json:"inicio"`
+	Horas    int       `json:"horas"`
+	Estado   string    `json:"estado"`
+}
+
+func nuevaRespuesta(r reservas.Reserva) ReservaRespuesta {
+	return ReservaRespuesta{ID: r.ID, CanchaID: r.CanchaID, Cliente: r.Cliente,
+		Inicio: r.Inicio, Horas: r.Horas, Estado: r.Estado}
+}

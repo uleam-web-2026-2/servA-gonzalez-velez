@@ -1,0 +1,165 @@
+// Package transporte es lo único del servidor que sabe de HTTP: lee la
+// petición, llama al servicio y elige el código de la respuesta.
+package transporte
+
+import (
+	"encoding/json"
+	"errors"
+	"log"
+	"net/http"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
+
+	"canchas/internal/reservas"
+	"canchas/internal/respuesta"
+	"canchas/internal/sesion"
+)
+
+// Tickets atiende las rutas de los reservas. No consulta la base: le pide
+// todo al servicio.
+type Reservas struct {
+	Servicio *reservas.Servicio
+}
+
+// Rutas es el mapa de permisos de los tickets, en un solo lugar:
+// cada ruta está debajo del comentario que dice su nivel.
+func (m *Reservas) Rutas(r chi.Router, tokens *sesion.Tokens) {
+	// Nivel 1 · Pública: cualquiera, sin token.
+	r.Get("/canchas", m.listarCanchas)
+
+	// Nivel 2 · Con sesión: antes del manejador corre el guardia.
+	conSesion := r.With(tokens.Autenticar)
+	conSesion.Get("/reservas", m.listar)
+	conSesion.Post("/reservas", m.crear)
+	conSesion.Get("/reservas/{id}", m.verUna)
+
+	// Nivel 3 · Solo el dueño: después del guardia se revisa el rol.
+	soloDueno := conSesion.With(sesion.SoloRol(sesion.RolDueno))
+	soloDueno.Put("/reservas/{id}", m.actualizar)
+	soloDueno.Patch("/reservas/{id}", m.cambiarEstado)
+	soloDueno.Delete("/reservas/{id}", m.borrar)
+}
+
+// responderError traduce un error del servicio a un código HTTP.
+// Es el único lugar donde un error del negocio se vuelve un número.
+func responderError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, reservas.ErrNoExiste):
+		respuesta.Error(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, reservas.ErrInvalido), errors.Is(err, reservas.ErrTransicion):
+		respuesta.Error(w, http.StatusUnprocessableEntity, err.Error())
+	default:
+		log.Println("error interno:", err) // el detalle va al registro, no al cliente
+		respuesta.Error(w, http.StatusInternalServerError, "no se pudo completar la operación")
+	}
+}
+
+func leerID(r *http.Request) (uint, bool) {
+	n, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return uint(n), true
+}
+
+func (m *Reservas) listar(w http.ResponseWriter, r *http.Request) {
+	lista, err := m.Servicio.Listar(r.URL.Query().Get("estado"))
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	respuesta.JSON(w, http.StatusOK, lista)
+}
+
+func (m *Reservas) crear(w http.ResponseWriter, r *http.Request) {
+	var t reservas.Reserva
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		respuesta.Error(w, http.StatusBadRequest, "el cuerpo no es JSON válido")
+		return
+	}
+	creado, err := m.Servicio.Crear(t)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	respuesta.JSON(w, http.StatusCreated, creado)
+}
+
+func (m *Reservas) verUna(w http.ResponseWriter, r *http.Request) {
+	id, ok := leerID(r)
+	if !ok {
+		respuesta.Error(w, http.StatusBadRequest, "el id debe ser un número entero positivo")
+		return
+	}
+	t, err := m.Servicio.Buscar(id)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	respuesta.JSON(w, http.StatusOK, t)
+}
+
+func (m *Reservas) actualizar(w http.ResponseWriter, r *http.Request) {
+	id, ok := leerID(r)
+	if !ok {
+		respuesta.Error(w, http.StatusBadRequest, "el id debe ser un número entero positivo")
+		return
+	}
+	var cambios reservas.Reserva
+	if err := json.NewDecoder(r.Body).Decode(&cambios); err != nil {
+		respuesta.Error(w, http.StatusBadRequest, "el cuerpo no es JSON válido")
+		return
+	}
+	t, err := m.Servicio.Actualizar(id, cambios)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	respuesta.JSON(w, http.StatusOK, t)
+}
+
+// cambiarEstado: PATCH /tickets/{id} con el cuerpo {"estado": "..."}.
+// Lee la petición, llama al caso de uso y traduce el resultado.
+func (m *Reservas) cambiarEstado(w http.ResponseWriter, r *http.Request) {
+	id, ok := leerID(r)
+	if !ok {
+		respuesta.Error(w, http.StatusBadRequest, "el id debe ser un número entero positivo")
+		return
+	}
+	var pedido struct {
+		Estado string `json:"estado"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&pedido); err != nil {
+		respuesta.Error(w, http.StatusBadRequest, "el cuerpo no es JSON válido")
+		return
+	}
+	t, err := m.Servicio.CambiarEstado(id, pedido.Estado)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	respuesta.JSON(w, http.StatusOK, t)
+}
+
+func (m *Reservas) borrar(w http.ResponseWriter, r *http.Request) {
+	id, ok := leerID(r)
+	if !ok {
+		respuesta.Error(w, http.StatusBadRequest, "el id debe ser un número entero positivo")
+		return
+	}
+	if err := m.Servicio.Borrar(id); err != nil {
+		responderError(w, err)
+		return
+	}
+	respuesta.JSON(w, http.StatusOK, map[string]uint{"borrada": id})
+}
+
+func (m *Reservas) listarCanchas(w http.ResponseWriter, r *http.Request) {
+	lista, err := m.Servicio.ListarCanchas()
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+	respuesta.JSON(w, http.StatusOK, lista)
+}

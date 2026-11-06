@@ -1,0 +1,61 @@
+package almacen
+
+import (
+	"errors"
+
+	"gorm.io/gorm"
+
+	"canchas/internal/reservas"
+)
+
+type Reservas struct {
+	DB *gorm.DB
+}
+
+var _ reservas.Repositorio = (*Reservas)(nil)
+
+func (a *Reservas) Listar(estado string) ([]reservas.Reserva, error) {
+	var lista []reservas.Reserva
+	consulta := a.DB
+	if estado != "" {
+		consulta = consulta.Where("estado = ?", estado)
+	}
+	err := consulta.Find(&lista).Error
+	return lista, err
+}
+
+func (a *Reservas) Buscar(id uint) (reservas.Reserva, error) {
+	var res reservas.Reserva
+	err := a.DB.First(&res, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return res, reservas.ErrNoExiste
+	}
+	return res, err
+}
+
+func (a *Reservas) Crear(res *reservas.Reserva) error   { return a.DB.Create(res).Error }
+func (a *Reservas) Guardar(res *reservas.Reserva) error { return a.DB.Save(res).Error }
+
+func (a *Reservas) Borrar(id uint) error {
+	resultado := a.DB.Delete(&reservas.Reserva{}, id)
+	if resultado.Error != nil {
+		return resultado.Error
+	}
+	if resultado.RowsAffected == 0 {
+		return reservas.ErrNoExiste
+	}
+	return nil
+}
+
+// ExisteCancha responde si hay una cancha con ese id.
+func (a *Reservas) ExisteCancha(id uint) (bool, error) {
+	var n int64
+	err := a.DB.Model(&reservas.Cancha{}).Where("id = ?", id).Count(&n).Error
+	return n > 0, err
+}
+
+func (a *Reservas) ListarCanchas() ([]reservas.Cancha, error) {
+	var lista []reservas.Cancha
+	err := a.DB.Preload("Reservas").Find(&lista).Error
+	return lista, err
+}

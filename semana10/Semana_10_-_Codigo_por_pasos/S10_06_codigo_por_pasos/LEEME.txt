@@ -1,0 +1,7 @@
+Fragmentos del ejemplo de reserva de canchas, en el orden del taller.
+Son para trasladarlos a su entidad principal, no para copiarlos tal cual.
+No es un proyecto completo y no compila por sí solo.
+
+punto_de_partida/: la reserva de canchas tal como quedó en la guía de la
+semana 8. Son los mismos archivos del anexo D del taller. Llevan la extensión
+.txt para que no se compilen si descomprimen esto dentro de su proyecto.

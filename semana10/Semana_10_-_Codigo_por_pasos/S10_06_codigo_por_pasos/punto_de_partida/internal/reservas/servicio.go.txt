@@ -1,0 +1,63 @@
+package reservas
+
+import "fmt"
+
+type Servicio struct {
+	repo Repositorio
+}
+
+func NuevoServicio(repo Repositorio) *Servicio {
+	return &Servicio{repo: repo}
+}
+
+func (s *Servicio) Listar(estado string) ([]Reserva, error) { return s.repo.Listar(estado) }
+func (s *Servicio) Buscar(id uint) (Reserva, error)         { return s.repo.Buscar(id) }
+func (s *Servicio) Borrar(id uint) error                    { return s.repo.Borrar(id) }
+func (s *Servicio) ListarCanchas() ([]Cancha, error)        { return s.repo.ListarCanchas() }
+
+func (s *Servicio) Crear(res Reserva) (Reserva, error) {
+	if res.Estado == "" {
+		res.Estado = "pendiente"
+	}
+	if msj := validar(res); msj != "" {
+		return res, fmt.Errorf("%w: %s", ErrInvalido, msj)
+	}
+	existe, err := s.repo.ExisteCancha(res.CanchaID)
+	if err != nil {
+		return res, err
+	}
+	if !existe {
+		return res, fmt.Errorf("%w: la cancha no existe", ErrInvalido)
+	}
+	err = s.repo.Crear(&res)
+	return res, err
+}
+
+func (s *Servicio) Actualizar(id uint, cambios Reserva) (Reserva, error) {
+	if msj := validar(cambios); msj != "" {
+		return Reserva{}, fmt.Errorf("%w: %s", ErrInvalido, msj)
+	}
+	res, err := s.repo.Buscar(id)
+	if err != nil {
+		return res, err
+	}
+	res.Cliente, res.Inicio, res.Horas = cambios.Cliente, cambios.Inicio, cambios.Horas
+	err = s.repo.Guardar(&res)
+	return res, err
+}
+
+func (s *Servicio) CambiarEstado(id uint, nuevo string) (Reserva, error) {
+	if !EstadosValidos[nuevo] {
+		return Reserva{}, fmt.Errorf("%w: estado no permitido: %s", ErrInvalido, nuevo)
+	}
+	res, err := s.repo.Buscar(id)
+	if err != nil {
+		return res, err
+	}
+	if !PuedePasar(res.Estado, nuevo) {
+		return res, fmt.Errorf("%w: de %s no se puede pasar a %s", ErrTransicion, res.Estado, nuevo)
+	}
+	res.Estado = nuevo
+	err = s.repo.Guardar(&res)
+	return res, err
+}

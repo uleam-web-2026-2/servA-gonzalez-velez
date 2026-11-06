@@ -1,0 +1,14 @@
+func (s *Servicio) ConfirmarYCobrar(id uint, monto int) (Reserva, error) {
+	res, err := s.repo.Buscar(id)
+	if err != nil {
+		return res, err
+	}
+	if !PuedePasar(res.Estado, "confirmada") {
+		return res, fmt.Errorf("%w: de %s a confirmada", ErrTransicion, res.Estado)
+	}
+	res.Estado = "confirmada"
+	if err := s.repo.Guardar(&res); err != nil {
+		return res, err
+	}
+	return res, s.repo.CrearPago(&Pago{ReservaID: id, Monto: monto})
+}

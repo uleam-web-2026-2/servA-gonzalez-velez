@@ -1,0 +1,5 @@
+conexion, err := db.DB()
+if err != nil {
+	log.Fatal("no se pudo obtener la conexión: ", err)
+}
+repo := almacen.NuevoReservasSqlc(&almacen.Reservas{DB: db}, conexion)

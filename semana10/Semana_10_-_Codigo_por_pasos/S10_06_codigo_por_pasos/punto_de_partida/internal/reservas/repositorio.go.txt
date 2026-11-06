@@ -1,0 +1,13 @@
+package reservas
+
+// Repositorio es lo que el servicio necesita de la base de datos.
+type Repositorio interface {
+	Listar(estado string) ([]Reserva, error)
+	Buscar(id uint) (Reserva, error)
+	Crear(res *Reserva) error
+	Guardar(res *Reserva) error
+	Borrar(id uint) error
+	// Lo que hace falta de la segunda entidad.
+	ExisteCancha(id uint) (bool, error)
+	ListarCanchas() ([]Cancha, error)
+}

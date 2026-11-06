@@ -1,0 +1,34 @@
+package reservas
+
+import (
+	"slices"
+	"strings"
+)
+
+// Las reglas del negocio. Este archivo no sabe nada de HTTP ni de la base.
+
+var siguientes = map[string][]string{
+	"pendiente":  {"confirmada", "cancelada"},
+	"confirmada": {"jugada", "cancelada"},
+	"jugada":     {},
+	"cancelada":  {},
+}
+
+// PuedePasar dice si la máquina de estados permite ir de un estado a otro.
+func PuedePasar(de, a string) bool {
+	return slices.Contains(siguientes[de], a)
+}
+
+// validar aplica las reglas del negocio que NO necesitan la base de datos.
+func validar(res Reserva) string {
+	if strings.TrimSpace(res.Cliente) == "" {
+		return "el cliente es obligatorio"
+	}
+	if res.Horas < 1 || res.Horas > 4 {
+		return "las horas deben estar entre 1 y 4"
+	}
+	if !EstadosValidos[res.Estado] {
+		return "estado no permitido: " + res.Estado
+	}
+	return ""
+}
