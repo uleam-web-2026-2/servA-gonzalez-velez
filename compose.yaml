@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:-rentcar}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rentcar}"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: host=db user=${POSTGRES_USER:-postgres} password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env} dbname=${POSTGRES_DB:-rentcar} port=5432
+      CLAVE_FIRMA: ${CLAVE_FIRMA:?Defina CLAVE_FIRMA en .env}
+      PUERTO: ${PUERTO:-8080}
+      TIEMPO_ESPERA_SEGUNDOS: ${TIEMPO_ESPERA_SEGUNDOS:-5}
+    ports:
+      - "${PUERTO:-8080}:${PUERTO:-8080}"
+
+volumes:
+  pgdata:

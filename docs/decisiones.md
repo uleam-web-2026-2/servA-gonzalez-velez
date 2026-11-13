@@ -106,3 +106,20 @@ Se usó `-p 8080:8080`: el primer `8080` es el puerto publicado en la máquina a
 
 ### D4 · La hora
 En RentCar, la petición 3 devuelve `FechaInicio` y `FechaFin` como cadenas de fecha simple (`YYYY-MM-DD`, por ejemplo `"2026-09-20"`), por lo que la respuesta JSON fue idéntica entre `go run` y el contenedor; sin embargo, en los logs del contenedor se observa la diferencia de zona horaria (`2026/11/13 03:06` en UTC frente a `2026/11/12 22:06` en `-05:00` local). Si la API manejara `time.Time` con hora y zona horaria (por ejemplo, para registrar la hora exacta de entrega/devolución de vehículos o vencimiento de reservas por hora), en el contenedor saldrían en UTC (`Z`) representando el mismo instante, pero cualquier cálculo o corte por día local sin fijar la zona horaria (`America/Guayaquil` o `TZ`) podría desplazar reservas nocturnas al día siguiente. Decidimos mantener `YYYY-MM-DD` para las fechas de reserva y tener en cuenta UTC en los logs y futuros timestamps.
+
+## Semana 11 · reto: la API y la base, juntas
+
+### D5 · Cómo encuentra la API a la base
+La API se conecta usando el nombre del servicio de PostgreSQL definido en `compose.yaml` (`host=db`) y el puerto interno `port=5432`. Docker Compose crea una red privada por defecto para el proyecto donde cada servicio se resuelve por su nombre DNS (`db`), y dentro de esa red PostgreSQL escucha en su puerto estándar (`5432`), no en el `5433` que solo se usaba para publicar el contenedor `pg` hacia Windows.
+
+### D6 · El orden de arranque
+Con la base recién creada, `depends_on` simple solo espera a que el contenedor `db` inicie, no a que PostgreSQL termine de inicializar la base de datos; si la API arranca antes, falla al conectar. Lo resolvimos configurando un `healthcheck` en `db` con `pg_isready -U postgres -d rentcar` y haciendo que `api` dependa de `db` con `condition: service_healthy`. Así se probó `docker compose down -v` seguido de `docker compose up -d --build` tres veces seguidas y las tres arrancaron sin errores.
+
+### D7 · Dónde quedan los datos
+Los datos de PostgreSQL se guardan en el volumen nombrado `pgdata` montado en `/var/lib/postgresql/data` dentro del servicio `db`. Al ejecutar `docker compose down` (sin `-v`), los contenedores y la red se eliminan pero el volumen `pgdata` se conserva, por lo que al volver a subir los registros siguen ahí. Solo `docker compose down -v` (o `docker volume rm`) borra el volumen y reinicia la base desde cero.
+
+### D8 · Los secretos
+`compose.yaml` no contiene contraseñas ni claves escritas: utiliza interpolación de variables de entorno (`${POSTGRES_PASSWORD:?...}`, `${CLAVE_FIRMA:?...}`), que Docker Compose lee automáticamente del archivo `.env` local (o del entorno del sistema/servidor). De este modo `compose.yaml` se puede subir al repositorio sin exponer secretos.
+
+### D9 · Lo que se publica en la máquina
+`compose.yaml` publica únicamente el puerto de la API (`${PUERTO:-8080}:${PUERTO:-8080}`) para que Bruno y los clientes lleguen en el puerto habitual sin chocar con el contenedor `pg` de la semana 3 (que sigue usando el `5433`). El servicio `db` no publica ningún puerto hacia la máquina anfitriona; cuando necesitemos consultarlo con `psql`, podemos ejecutarlo directamente dentro del contenedor de Compose con `docker compose exec db psql -U postgres -d rentcar`.

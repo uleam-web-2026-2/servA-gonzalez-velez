@@ -1,0 +1,78 @@
+﻿NAME                         IMAGE                      COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+serva-gonzalez-reina-api-1   serva-gonzalez-reina-api   "/servidor"              api       23 seconds ago   Up 18 seconds             0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+serva-gonzalez-reina-db-1    postgres:16-alpine         "docker-entrypoint.s…"   db        23 seconds ago   Up 22 seconds (healthy)   5432/tcp
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[18.760ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'sucursals' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[31.844ms] [34;1m[rows:0][0m CREATE TABLE "sucursals" ("id" bigserial,"nombre" text NOT NULL,"ciudad" text NOT NULL,"direccion" text NOT NULL,"activa" boolean NOT NULL DEFAULT true,PRIMARY KEY ("id"))
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[1.492ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[27.506ms] [34;1m[rows:0][0m CREATE TABLE "usuarios" ("id" bigserial,"sucursal_id" bigint NOT NULL,"nombre" text NOT NULL,"correo" text NOT NULL,"rol" text NOT NULL,PRIMARY KEY ("id"),CONSTRAINT "fk_usuarios_sucursal" FOREIGN KEY ("sucursal_id") REFERENCES "sucursals"("id"))
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[13.036ms] [34;1m[rows:0][0m CREATE INDEX IF NOT EXISTS "idx_usuarios_sucursal_id" ON "usuarios" ("sucursal_id")
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[1.527ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clientes' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[23.321ms] [34;1m[rows:0][0m CREATE TABLE "clientes" ("id" bigserial,"nombre" text NOT NULL,"correo" text NOT NULL,"telefono" text,"cedula" text NOT NULL,PRIMARY KEY ("id"))
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[1.372ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[22.027ms] [34;1m[rows:0][0m CREATE TABLE "vehiculos" ("id" bigserial,"sucursal_id" bigint NOT NULL,"marca" text NOT NULL,"modelo" text NOT NULL,"tipo" text NOT NULL,"precio_dia" decimal NOT NULL,"estado_flota" text NOT NULL DEFAULT 'disponible',PRIMARY KEY ("id"),CONSTRAINT "fk_vehiculos_sucursal" FOREIGN KEY ("sucursal_id") REFERENCES "sucursals"("id"))
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[11.998ms] [34;1m[rows:0][0m CREATE INDEX IF NOT EXISTS "idx_vehiculos_sucursal_id" ON "vehiculos" ("sucursal_id")
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[1.090ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[25.481ms] [34;1m[rows:0][0m CREATE TABLE "reservas" ("id" bigserial,"cliente_id" bigint NOT NULL,"vehiculo_id" bigint NOT NULL,"fecha_inicio" text NOT NULL,"fecha_fin" text NOT NULL,"total" decimal NOT NULL,"estado" text NOT NULL,PRIMARY KEY ("id"),CONSTRAINT "fk_reservas_cliente" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("id"),CONSTRAINT "fk_vehiculos_reservas" FOREIGN KEY ("vehiculo_id") REFERENCES "vehiculos"("id"))
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[12.211ms] [34;1m[rows:0][0m CREATE INDEX IF NOT EXISTS "idx_reservas_vehiculo_id" ON "reservas" ("vehiculo_id")
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[12.708ms] [34;1m[rows:0][0m CREATE INDEX IF NOT EXISTS "idx_reservas_cliente_id" ON "reservas" ("cliente_id")
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[1.124ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[24.305ms] [34;1m[rows:0][0m CREATE TABLE "pagos" ("id" bigserial,"reserva_id" bigint NOT NULL,"monto" decimal NOT NULL,"metodo" text NOT NULL,"estado_pago" text NOT NULL,"referencia" text,"creado" timestamptz,PRIMARY KEY ("id"),CONSTRAINT "fk_reservas_pagos" FOREIGN KEY ("reserva_id") REFERENCES "reservas"("id"))
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[12.597ms] [34;1m[rows:0][0m CREATE INDEX IF NOT EXISTS "idx_pagos_reserva_id" ON "pagos" ("reserva_id")
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[0.417ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'cuentas' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[21.614ms] [34;1m[rows:0][0m CREATE TABLE "cuentas" ("id" bigserial,"nombre" text,"rol" text,"clave_hash" text,PRIMARY KEY ("id"))
+api-1  | 
+api-1  | 2026/11/13 03:08:37 [32m/src/main.go:46
+api-1  | [0m[33m[12.720ms] [34;1m[rows:0][0m CREATE UNIQUE INDEX IF NOT EXISTS "idx_cuentas_nombre" ON "cuentas" ("nombre")
+api-1  | 2026/11/13 03:08:38 escuchando en el puerto 8080
+api-1  | 2026/11/13 03:08:55 GET /reservas → 401 (97.371µs)
+api-1  | 2026/11/13 03:08:55 POST /login → 200 (92.2373ms)
+api-1  | 2026/11/13 03:08:55 POST /login → 200 (55.586804ms)
+api-1  | 
+api-1  | 2026/11/13 03:08:55 [32m/src/internal/almacen/reservas.go:40
+api-1  | [0m[33m[4.504ms] [34;1m[rows:1][0m INSERT INTO "reservas" ("cliente_id","vehiculo_id","fecha_inicio","fecha_fin","total","estado") VALUES (1,1,'2026-11-01','2026-11-05',140,'pendiente') RETURNING "id"
+api-1  | 2026/11/13 03:08:55 POST /reservas → 201 (7.61798ms)
+api-1  | 
+api-1  | 2026/11/13 03:08:55 [32m/src/internal/almacen/reservas.go:55
+api-1  | [0m[33m[0.718ms] [34;1m[rows:4][0m SELECT * FROM "reservas"
+api-1  | 2026/11/13 03:08:55 GET /reservas → 200 (949.865µs)
+api-1  | 2026/11/13 03:08:55 PATCH /reservas/4 → 403 (63.274µs)
+api-1  | 2026/11/13 03:08:55 PATCH /reservas/4 → 200 (48.711629ms)
+api-1  | 2026/11/13 03:08:56 PATCH /reservas/4 → 422 (43.895534ms)
