@@ -92,3 +92,21 @@ Elegimos esta separación porque permite probar las reglas de negocio sin HTTP y
 mantener las operaciones SQL en un único lugar. Si cambia la base de datos, se
 reemplaza la implementación del repositorio y se conserva la lógica de negocio y
 el manejo HTTP.
+
+## Semana 11 · el contenedor
+
+### D1 · Qué entra en la imagen
+
+La imagen final `rentcar:latest` ocupa **38.9 MB** en disco (**11.7 MB** de contenido) y contiene el binario estático `/servidor` sobre la base mínima `distroless`. La etapa de compilación `rentcar:compilacion` ocupa **1.63 GB** (**389 MB** de contenido) porque conserva Go, las dependencias y el código fuente usados para compilar. El `.dockerignore` evita que `.env` entre al contexto de construcción. Sin ese archivo, `COPY . .` lo copiaría a la etapa de compilación; no llegaría a la imagen final porque solo copiamos `/servidor`, pero quedaría expuesto en esa etapa y en la caché de construcción.
+
+### D2 · Dónde está la base, vista desde el contenedor
+
+`localhost` dentro del contenedor apunta al propio contenedor, donde no corre PostgreSQL; por eso la conexión al puerto `5433` fue rechazada. En Docker Desktop usamos `host.docker.internal`, que permite llegar al host y al puerto `5433` publicado por el contenedor de PostgreSQL. En un servidor real evitaríamos depender de la máquina anfitriona: conectaríamos la API y PostgreSQL a una red privada y usaríamos el nombre del servicio de la base.
+
+### D3 · Los puertos
+
+Arrancamos con `-p 8080:8080`: el número de la izquierda (`8080`) es el puerto publicado en la máquina y al que se conecta Bruno; el de la derecha (`8080`) es el puerto dentro del contenedor. El número de la derecha debe coincidir con `PUERTO`, que aquí es `8080`. Si no coincide, Docker enviaría el tráfico a un puerto donde el servidor no escucha y las peticiones no llegarían a la API.
+
+### D4 · La hora
+
+Comparamos la respuesta completa de `GET /reservas` con `go run` y con el contenedor usando la misma base y el mismo estado: fueron idénticas. Los campos de fecha salen como `YYYY-MM-DD`, sin hora ni zona horaria, así que en esta respuesta no hay un instante que cambie de zona. El proceso dentro del contenedor usa UTC, mientras que la máquina de desarrollo está en la zona de Ecuador; la diferencia se observa en las horas de los logs. Si RentCar incorporara horas de retiro y devolución, habría que guardar instantes con zona explícita y mostrarlos en la zona del negocio para evitar confundir el horario o el día de entrega de un vehículo.

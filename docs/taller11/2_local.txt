@@ -1,0 +1,8 @@
+
+2026/11/13 03:56:44 [35m/src/main.go:29
+[0m[31m[error] [0mfailed to initialize database, got error failed to connect to `user=postgres database=rentcar`:
+	127.0.0.1:5433 (localhost): dial error: dial tcp 127.0.0.1:5433: connect: connection refused
+	[::1]:5433 (localhost): dial error: dial tcp [::1]:5433: connect: connection refused
+2026/11/13 03:56:44 no se pudo conectar: failed to connect to `user=postgres database=rentcar`:
+	127.0.0.1:5433 (localhost): dial error: dial tcp 127.0.0.1:5433: connect: connection refused
+	[::1]:5433 (localhost): dial error: dial tcp [::1]:5433: connect: connection refused
