@@ -92,3 +92,17 @@ Elegimos esta separación porque permite probar las reglas de negocio sin HTTP y
 mantener las operaciones SQL en un único lugar. Si cambia la base de datos, se
 reemplaza la implementación del repositorio y se conserva la lógica de negocio y
 el manejo HTTP.
+
+## Semana 11 · el contenedor
+
+### D1 · Qué entra en la imagen
+La imagen final (`rentcar:latest`, `38.9MB` en disco / `11.7MB` de contenido) parte de `gcr.io/distroless/static-debian13:nonroot` y contiene únicamente el binario estático `/servidor` (compilado con `CGO_ENABLED=0`), certificados raíz, zonas horarias base, `/tmp` y el usuario sin privilegios `65532`. Todo el código fuente Go, el compilador `golang:1.27` y los módulos descargados se quedan en la etapa `compilacion` (`rentcar:compilacion`, `1.63GB` en disco / `389MB` de contenido). Si no existiera `.dockerignore`, el archivo `.env` sí entraría al contexto de construcción (`/src`) en la etapa de compilación, aunque no llegaría a la imagen final porque la segunda etapa solo copia `/servidor` con `COPY --from=compilacion`.
+
+### D2 · Dónde está la base, vista desde el contenedor
+`localhost` falló con `connection refused` en `127.0.0.1:5433` porque dentro del contenedor `localhost` apunta al propio contenedor de la API, donde no hay ningún servidor PostgreSQL escuchando. En `.env.docker` se reemplazó por `host.docker.internal` manteniendo el puerto `5433` para alcanzar el contenedor `pg` publicado en la máquina anfitriona. Cuando la API corra en un servidor real, `DATABASE_URL` deberá apuntar al nombre del servicio o dirección IP/host de la base de datos en esa red o proveedor (y nunca a `host.docker.internal`).
+
+### D3 · Los puertos
+Se usó `-p 8080:8080`: el primer `8080` es el puerto publicado en la máquina anfitriona (al que se conectan Bruno y el navegador) y el segundo `8080` es el puerto interno donde escucha el contenedor. El número de la derecha debe coincidir con la variable `PUERTO` (`8080`); si no coinciden, Docker reenvía el tráfico a un puerto donde el proceso no está escuchando y las peticiones fallan con conexión reiniciada o rechazada.
+
+### D4 · La hora
+En RentCar, la petición 3 devuelve `FechaInicio` y `FechaFin` como cadenas de fecha simple (`YYYY-MM-DD`, por ejemplo `"2026-09-20"`), por lo que la respuesta JSON fue idéntica entre `go run` y el contenedor; sin embargo, en los logs del contenedor se observa la diferencia de zona horaria (`2026/11/13 03:06` en UTC frente a `2026/11/12 22:06` en `-05:00` local). Si la API manejara `time.Time` con hora y zona horaria (por ejemplo, para registrar la hora exacta de entrega/devolución de vehículos o vencimiento de reservas por hora), en el contenedor saldrían en UTC (`Z`) representando el mismo instante, pero cualquier cálculo o corte por día local sin fijar la zona horaria (`America/Guayaquil` o `TZ`) podría desplazar reservas nocturnas al día siguiente. Decidimos mantener `YYYY-MM-DD` para las fechas de reserva y tener en cuenta UTC en los logs y futuros timestamps.

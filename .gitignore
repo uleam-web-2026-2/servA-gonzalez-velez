@@ -1,6 +1,8 @@
 # Secretos de esta máquina: nunca se suben.
 .env
 .env.atras
+.env.*
+!.env.example
 
 # Binarios compilados.
 *.exe
