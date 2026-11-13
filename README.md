@@ -54,6 +54,29 @@ docker exec pg psql -U postgres -c "CREATE DATABASE rentcar;"
 
 - La cadena de conexión va en `.env` — ver `.env.example`. No se sube al repositorio.
 
+### API y PostgreSQL con Docker Compose
+
+Para levantar ambos servicios en la red privada de Compose, configure en `.env`
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` y `CLAVE_FIRMA` (puede
+partir de `.env.example`; la contraseña debe coincidir con la de `DATABASE_URL`
+para seguir usando `go run .`):
+
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs api
+```
+
+La API queda disponible en `http://localhost:8080`. PostgreSQL no publica un
+puerto en la máquina; se puede consultar desde su contenedor con:
+
+```bash
+docker compose exec db psql -U postgres -d rentcar
+```
+
+`docker compose down` conserva los datos del volumen nombrado. Para borrar
+también la base de Compose y sus datos, use `docker compose down -v`.
+
 ## Cómo correr las pruebas
 
 ```bash

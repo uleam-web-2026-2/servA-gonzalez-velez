@@ -1,0 +1,324 @@
+Verificaciones del reto:
+- Tres ciclos consecutivos de `docker compose down -v` y `docker compose up -d --build`, cada uno desde PostgreSQL vacío: la base llegó a `healthy` y `GET /vehiculos` respondió `200`.
+- Persistencia: la reserva 4 siguió disponible tras `docker compose down` y `docker compose up -d` (sin `-v`).
+- Seis peticiones con Compose: `401, 200, 200, 403, 200, 422`.
+
+--- docker compose ps ---
+NAME                         IMAGE                      COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+serva-gonzalez-velez-api-1   serva-gonzalez-velez-api   "/servidor"              api       24 seconds ago   Up 18 seconds             0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+serva-gonzalez-velez-db-1    postgres:16                "docker-entrypoint.s…"   db        24 seconds ago   Up 23 seconds (healthy)   5432/tcp
+
+--- docker compose logs api ---
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[17.262ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'sucursals' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.271ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[34.126ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'rentcar' AND table_schema = CURRENT_SCHEMA() AND table_name = 'sucursals'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[2.752ms] [34;1m[rows:-][0m SELECT * FROM "sucursals" LIMIT 5
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[17.269ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'sucursals' AND constraint_type = 'UNIQUE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[11.158ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'sucursals'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[2.200ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type	FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())	WHERE a.attnum > 0	AND NOT a.attisdropped	AND b.relname = 'sucursals'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[6.609ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'sucursals' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'sucursals' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[2.932ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'sucursals' AND column_name = 'nombre') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'sucursals' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[3.102ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'sucursals' AND column_name = 'ciudad') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'sucursals' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[3.122ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'sucursals' AND column_name = 'direccion') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'sucursals' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[3.124ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'sucursals' AND column_name = 'activa') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'sucursals' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.187ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.531ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[8.577ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'rentcar' AND table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.192ms] [34;1m[rows:-][0m SELECT * FROM "usuarios" LIMIT 5
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[11.054ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'usuarios' AND constraint_type = 'UNIQUE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[10.935ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'usuarios'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.114ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type	FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())	WHERE a.attnum > 0	AND NOT a.attisdropped	AND b.relname = 'usuarios'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[3.765ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'usuarios' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.363ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios' AND column_name = 'sucursal_id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'usuarios' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.926ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios' AND column_name = 'nombre') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'usuarios' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.890ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios' AND column_name = 'correo') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'usuarios' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.192ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios' AND column_name = 'rol') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'usuarios' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[2.908ms] [34;1m[rows:1][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'usuarios' AND constraint_name = 'fk_usuarios_sucursal'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[3.454ms] [34;1m[rows:1][0m SELECT count(*) FROM pg_indexes WHERE tablename = 'usuarios' AND indexname = 'idx_usuarios_sucursal_id' AND schemaname = CURRENT_SCHEMA()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.459ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clientes' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.460ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[9.677ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'rentcar' AND table_schema = CURRENT_SCHEMA() AND table_name = 'clientes'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.017ms] [34;1m[rows:-][0m SELECT * FROM "clientes" LIMIT 5
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[10.670ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'clientes' AND constraint_type = 'UNIQUE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[8.733ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'clientes'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.931ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type	FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())	WHERE a.attnum > 0	AND NOT a.attisdropped	AND b.relname = 'clientes'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.656ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clientes' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'clientes' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.620ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clientes' AND column_name = 'nombre') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'clientes' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.691ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clientes' AND column_name = 'correo') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'clientes' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.990ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clientes' AND column_name = 'telefono') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'clientes' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.778ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'clientes' AND column_name = 'cedula') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'clientes' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.292ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.404ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[7.993ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'rentcar' AND table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.352ms] [34;1m[rows:-][0m SELECT * FROM "vehiculos" LIMIT 5
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[8.140ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'vehiculos' AND constraint_type = 'UNIQUE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[9.634ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'vehiculos'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.467ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type	FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())	WHERE a.attnum > 0	AND NOT a.attisdropped	AND b.relname = 'vehiculos'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.995ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'vehiculos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.804ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND column_name = 'sucursal_id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'vehiculos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.797ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND column_name = 'marca') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'vehiculos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.789ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND column_name = 'modelo') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'vehiculos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.509ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND column_name = 'tipo') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'vehiculos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.416ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND column_name = 'precio_dia') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'vehiculos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.840ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND column_name = 'estado_flota') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'vehiculos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.850ms] [34;1m[rows:1][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'vehiculos' AND constraint_name = 'fk_vehiculos_sucursal'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.385ms] [34;1m[rows:1][0m SELECT count(*) FROM pg_indexes WHERE tablename = 'vehiculos' AND indexname = 'idx_vehiculos_sucursal_id' AND schemaname = CURRENT_SCHEMA()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.216ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.436ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[6.864ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'rentcar' AND table_schema = CURRENT_SCHEMA() AND table_name = 'reservas'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.684ms] [34;1m[rows:-][0m SELECT * FROM "reservas" LIMIT 5
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[7.935ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'reservas' AND constraint_type = 'UNIQUE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[9.121ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'reservas'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.141ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type	FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())	WHERE a.attnum > 0	AND NOT a.attisdropped	AND b.relname = 'reservas'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.943ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'reservas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.665ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND column_name = 'cliente_id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'reservas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.766ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND column_name = 'vehiculo_id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'reservas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.815ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND column_name = 'fecha_inicio') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'reservas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.911ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND column_name = 'fecha_fin') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'reservas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.967ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND column_name = 'total') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'reservas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.767ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND column_name = 'estado') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'reservas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.858ms] [34;1m[rows:1][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND constraint_name = 'fk_reservas_cliente'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[2.075ms] [34;1m[rows:1][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'reservas' AND constraint_name = 'fk_vehiculos_reservas'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[2.178ms] [34;1m[rows:1][0m SELECT count(*) FROM pg_indexes WHERE tablename = 'reservas' AND indexname = 'idx_reservas_cliente_id' AND schemaname = CURRENT_SCHEMA()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.630ms] [34;1m[rows:1][0m SELECT count(*) FROM pg_indexes WHERE tablename = 'reservas' AND indexname = 'idx_reservas_vehiculo_id' AND schemaname = CURRENT_SCHEMA()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.468ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.554ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[7.845ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'rentcar' AND table_schema = CURRENT_SCHEMA() AND table_name = 'pagos'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.137ms] [34;1m[rows:-][0m SELECT * FROM "pagos" LIMIT 5
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[8.027ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'pagos' AND constraint_type = 'UNIQUE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[8.011ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'pagos'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.268ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type	FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())	WHERE a.attnum > 0	AND NOT a.attisdropped	AND b.relname = 'pagos'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.770ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'pagos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.121ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND column_name = 'reserva_id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'pagos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.431ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND column_name = 'monto') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'pagos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.958ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND column_name = 'metodo') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'pagos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.287ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND column_name = 'estado_pago') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'pagos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.293ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND column_name = 'referencia') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'pagos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.270ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND column_name = 'creado') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'pagos' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[2.262ms] [34;1m[rows:1][0m SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'pagos' AND constraint_name = 'fk_reservas_pagos'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.733ms] [34;1m[rows:1][0m SELECT count(*) FROM pg_indexes WHERE tablename = 'pagos' AND indexname = 'idx_pagos_reserva_id' AND schemaname = CURRENT_SCHEMA()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.951ms] [34;1m[rows:1][0m SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'cuentas' AND table_type = 'BASE TABLE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.829ms] [34;1m[rows:1][0m SELECT CURRENT_DATABASE()
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[2.340ms] [34;1m[rows:-][0m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'rentcar' AND table_schema = CURRENT_SCHEMA() AND table_name = 'cuentas'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.546ms] [34;1m[rows:-][0m SELECT * FROM "cuentas" LIMIT 5
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.481ms] [34;1m[rows:-][0m SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'cuentas' AND constraint_type = 'UNIQUE'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.955ms] [34;1m[rows:-][0m SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = 'rentcar' AND c.table_schema = CURRENT_SCHEMA() AND c.table_name = 'cuentas'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.262ms] [34;1m[rows:-][0m SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) AS data_type	FROM pg_attribute a JOIN pg_class b ON a.attrelid = b.oid AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA())	WHERE a.attnum > 0	AND NOT a.attisdropped	AND b.relname = 'cuentas'
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.080ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'cuentas' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'cuentas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.113ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'cuentas' AND column_name = 'nombre') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'cuentas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[0.726ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'cuentas' AND column_name = 'rol') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'cuentas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[11.461ms] [34;1m[rows:0][0m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'cuentas' AND column_name = 'clave_hash') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'cuentas' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))
+api-1  | 
+api-1  | 2026/11/13 04:13:43 [32m/src/main.go:46
+api-1  | [0m[33m[1.715ms] [34;1m[rows:1][0m SELECT count(*) FROM pg_indexes WHERE tablename = 'cuentas' AND indexname = 'idx_cuentas_nombre' AND schemaname = CURRENT_SCHEMA()
+api-1  | 2026/11/13 04:13:43 escuchando en el puerto 8080
+api-1  | 2026/11/13 04:13:44 POST /login → 200 (105.196871ms)
+api-1  | 2026/11/13 04:13:44 GET /reservas/4 → 200 (10.503378ms)
+api-1  | 2026/11/13 04:14:00 GET /reservas → 401 (1.701396ms)
+api-1  | 2026/11/13 04:14:00 POST /login → 200 (96.244156ms)
+api-1  | 
+api-1  | 2026/11/13 04:14:00 [32m/src/internal/almacen/reservas.go:55
+api-1  | [0m[33m[1.279ms] [34;1m[rows:4][0m SELECT * FROM "reservas"
+api-1  | 2026/11/13 04:14:00 GET /reservas → 200 (2.695443ms)
+api-1  | 2026/11/13 04:14:00 PATCH /reservas/4 → 403 (124.211µs)
+api-1  | 2026/11/13 04:14:00 POST /login → 200 (94.505021ms)
+api-1  | 2026/11/13 04:14:00 PATCH /reservas/4 → 200 (7.492361ms)
+api-1  | 2026/11/13 04:14:00 PATCH /reservas/1 → 422 (3.941161ms)

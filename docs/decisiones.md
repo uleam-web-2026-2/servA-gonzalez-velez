@@ -110,3 +110,25 @@ Arrancamos con `-p 8080:8080`: el número de la izquierda (`8080`) es el puerto 
 ### D4 · La hora
 
 Comparamos la respuesta completa de `GET /reservas` con `go run` y con el contenedor usando la misma base y el mismo estado: fueron idénticas. Los campos de fecha salen como `YYYY-MM-DD`, sin hora ni zona horaria, así que en esta respuesta no hay un instante que cambie de zona. El proceso dentro del contenedor usa UTC, mientras que la máquina de desarrollo está en la zona de Ecuador; la diferencia se observa en las horas de los logs. Si RentCar incorporara horas de retiro y devolución, habría que guardar instantes con zona explícita y mostrarlos en la zona del negocio para evitar confundir el horario o el día de entrega de un vehículo.
+
+## Semana 11 · reto: la API y la base, juntas
+
+### D5 · Cómo encuentra la API a la base
+
+La API usa `db:5432`: `db` es el nombre del servicio de PostgreSQL en Compose y Docker lo resuelve dentro de la red privada del proyecto. Se usa el puerto interno `5432` porque los contenedores se comunican directamente; `5433` solo era el puerto publicado en la máquina anfitriona para la base externa de desarrollo. PostgreSQL no publica ningún puerto en Compose.
+
+### D6 · El orden de arranque
+
+Con una base vacía, PostgreSQL necesita inicializarse antes de que la API pueda conectarse y ejecutar sus migraciones. El `healthcheck` consulta `pg_isready` hasta que la base está disponible, y `depends_on` con `condition: service_healthy` hace que Compose espere ese estado antes de iniciar la API. Probamos tres arranques consecutivos desde un volumen vacío; en todos la API quedó disponible y respondió `200`.
+
+### D7 · Dónde quedan los datos
+
+El volumen nombrado `rentcar-postgres-data` se monta en `/var/lib/postgresql/data`, por lo que `docker compose down` elimina los contenedores y la red, pero conserva las reservas. Verificamos que una reserva siguió disponible después de bajar y volver a levantar los servicios. `docker compose down -v` elimina también el volumen y sus datos.
+
+### D8 · Los secretos
+
+`compose.yaml` no contiene contraseñas ni claves. Compose las lee del `.env` local: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` y `CLAVE_FIRMA`. Usa las tres primeras para inicializar PostgreSQL y construir `DATABASE_URL` para la API; la contraseña de `.env` debe coincidir con la usada en `DATABASE_URL` al ejecutar `go run`. `.env` está ignorado por Git; `.env.example` documenta los nombres de las variables sin incluir credenciales reales.
+
+### D9 · Lo que se publica en la máquina
+
+Compose publica únicamente el puerto `8080` de la API (`8080:8080`), que es donde se conecta Bruno. PostgreSQL queda solo en la red privada de Compose, sin publicar `5432` ni chocar con el contenedor `pg` existente en el puerto `5433`. Para inspeccionarla se puede ejecutar `docker compose exec db psql -U postgres -d rentcar`.
