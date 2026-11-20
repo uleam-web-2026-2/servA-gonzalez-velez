@@ -165,3 +165,28 @@ El middleware `chimiddleware.ClientIPFromRemoteAddr` obtiene la IP directamente 
 Si publicáramos la API detrás de un proxy reverso (como Nginx, Caddy, Cloudflare o un balanceador de carga en la nube) sin ajustar esto, todas las conexiones TCP hacia nuestra API provendrían de la misma IP interna del proxy. En consecuencia, `porIP` agruparía a todos los usuarios bajo la misma clave y bastaría con que una sola persona hiciera 5 intentos en `/login` para bloquear el inicio de sesión de todos los demás usuarios durante un minuto.
 
 Aun así, no se puede confiar ciegamente en cabeceras como `X-Forwarded-For` o `X-Real-IP`, porque cualquier cliente puede enviar esas cabeceras falsificadas con IPs distintas en cada petición y evadir por completo el límite de tasa. Cuando haya un proxy reverso en producción, la solución segura es aceptar `X-Forwarded-For` **únicamente** si la conexión proviene de la IP confiable del proxy (y tomar la IP que agregó el proxy, no la que pudo inyectar el cliente).
+
+## Semana 12 · reto: mínimo privilegio en la base
+
+### D5 · Con qué usuario se conecta la API
+
+La API se conecta con el rol de PostgreSQL **`rentcar_api`**, creado con `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT` (como se verifica en `docs/taller12/reto_usuarios.txt`) y sin ser dueño de ninguna tabla ni del esquema `public`. Sus permisos fueron asignados explícitamente tabla por tabla:
+
+- `USAGE` sobre el esquema `public` (sin `CREATE`, para que no pueda crear tablas ni funciones).
+- `SELECT` únicamente sobre las tablas de lectura de la API: `sucursals`, `usuarios`, `clientes`, `vehiculos`, `pagos` y `cuentas` (en tiempo de ejecución `/login` solo consulta `cuentas`, porque la siembra ocurre aparte en el paso de migración).
+- `SELECT, INSERT, UPDATE, DELETE` únicamente sobre `reservas`, que es la tabla donde la API crea, actualiza estados y elimina registros.
+- `USAGE, SELECT` sobre la secuencia `reservas_id_seq`, imprescindible para que `POST /reservas` pueda generar nuevos IDs sin fallar con `permission denied for sequence reservas_id_seq`.
+
+Al intentar borrar la tabla `reservas` conectado como `rentcar_api` dentro de una transacción (`docs/taller12/reto_drop.txt`), PostgreSQL respondió `BEGIN`, luego **`ERROR: must be owner of table reservas`** y finalmente `ROLLBACK`, confirmando que la API no puede destruir ni alterar la estructura de la base.
+
+### D6 · Quién crea y cambia las tablas
+
+Las tablas, sus índices y los datos semilla los crea y modifica exclusivamente el usuario dueño de la base (**`postgres`**) mediante el modo separado **`go run . -migrar`** (que lee `DATABASE_URL_MIGRACION`, `DB_API_USER` y `DB_API_PASSWORD` desde `.env`, sin escribir contraseñas en el código ni en el repositorio). En Docker Compose (`compose.yaml`), un servicio dedicado `migrador` ejecuta el binario con `-migrar` cuando `db` está saludable (`service_healthy`), aplica `AutoMigrate`, siembra los datos y otorga los permisos mínimos a `rentcar_api`, y solo cuando termina con éxito (`service_completed_successfully`) arranca el servicio `api` conectado como `rentcar_api`.
+
+En el arranque normal (`go run .` o el contenedor `api`), el servidor ya no ejecuta `AutoMigrate` ni `Sembrar`. Si alguien cambia un modelo en Go y arranca la API directamente con `rentcar_api` sin correr primero `-migrar` con `postgres`, la API no podrá alterar el esquema: fallará en la primera consulta que espere la columna nueva (por ejemplo `ERROR: column ... does not exist`), obligando a pasar por el paso controlado de migración.
+
+### D7 · Lo que esto no frena
+
+Si todavía quedara una vulnerabilidad de inyección SQL en algún endpoint, el atacante ejecutaría consultas con los mismos permisos que tiene `rentcar_api`: **sí podría** leer cualquier fila de las tablas donde tiene `SELECT` (incluyendo clientes, reservas y hashes de contraseñas en `cuentas`) y también insertar, modificar o borrar filas en `reservas`.
+
+Lo que este usuario de mínimo privilegio **sí frena** es el daño estructural y la escalada sobre el servidor de base de datos: el atacante **no puede** ejecutar `DROP TABLE` ni `ALTER TABLE` sobre ninguna tabla, no puede crear tablas o funciones, no puede leer ni modificar otras bases de datos, ni crear nuevos roles o convertirse en superusuario. Es una capa de defensa en profundidad que limita el radio de impacto, no un sustituto de las consultas parametrizadas.

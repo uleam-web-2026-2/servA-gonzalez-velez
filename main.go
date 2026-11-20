@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -22,7 +25,8 @@ import (
 )
 
 func main() {
-	reset := flag.Bool("reset", false, "borra las tablas y arranca con la base vacía")
+	reset := flag.Bool("reset", false, "borra las tablas y arranca con la base vacía (requiere usuario migrador)")
+	migrar := flag.Bool("migrar", false, "ejecuta migraciones, siembra y permisos mínimos con DATABASE_URL_MIGRACION y termina")
 	flag.Parse()
 
 	cfg, err := config.Cargar()
@@ -30,39 +34,66 @@ func main() {
 		log.Fatal("configuración: ", err)
 	}
 
+	if *migrar || *reset {
+		dsnMigracion := os.Getenv("DATABASE_URL_MIGRACION")
+		if dsnMigracion == "" {
+			dsnMigracion = cfg.DatabaseURL
+		}
+		dbMig, err := gorm.Open(postgres.Open(dsnMigracion), &gorm.Config{})
+		if err != nil {
+			log.Fatal("no se pudo conectar para migrar: ", err)
+		}
+
+		if *reset {
+			dbMig.Migrator().DropTable(
+				&sesion.Usuario{},
+				&reservas.Pago{},
+				&reservas.Reserva{},
+				&reservas.Vehiculo{},
+				&reservas.Cliente{},
+				&reservas.Usuario{},
+				&reservas.Sucursal{},
+			)
+		}
+
+		if err := dbMig.AutoMigrate(
+			&reservas.Sucursal{},
+			&reservas.Usuario{},
+			&reservas.Cliente{},
+			&reservas.Vehiculo{},
+			&reservas.Reserva{},
+			&reservas.Pago{},
+			&sesion.Usuario{},
+		); err != nil {
+			log.Fatal("no se pudo migrar: ", err)
+		}
+
+		almacen.Sembrar(dbMig)
+
+		if err := sesion.Sembrar(dbMig); err != nil {
+			log.Fatal("no se pudieron sembrar los usuarios: ", err)
+		}
+
+		apiUser := os.Getenv("DB_API_USER")
+		if apiUser == "" {
+			apiUser = "rentcar_api"
+		}
+		apiPass := os.Getenv("DB_API_PASSWORD")
+		if apiPass != "" {
+			if err := aplicarPermisosMinimos(dbMig, apiUser, apiPass); err != nil {
+				log.Fatal("no se pudieron aplicar permisos mínimos: ", err)
+			}
+		}
+
+		log.Println("migración, siembra y permisos mínimos completados")
+		if *migrar {
+			return
+		}
+	}
+
 	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
 	if err != nil {
 		log.Fatal("no se pudo conectar: ", err)
-	}
-
-	if *reset {
-		db.Migrator().DropTable(
-			&sesion.Usuario{},
-			&reservas.Pago{},
-			&reservas.Reserva{},
-			&reservas.Vehiculo{},
-			&reservas.Cliente{},
-			&reservas.Usuario{},
-			&reservas.Sucursal{},
-		)
-	}
-
-	if err := db.Debug().AutoMigrate(
-		&reservas.Sucursal{},
-		&reservas.Usuario{},
-		&reservas.Cliente{},
-		&reservas.Vehiculo{},
-		&reservas.Reserva{},
-		&reservas.Pago{},
-		&sesion.Usuario{},
-	); err != nil {
-		log.Fatal("no se pudo migrar: ", err)
-	}
-
-	almacen.Sembrar(db)
-
-	if err := sesion.Sembrar(db); err != nil {
-		log.Fatal("no se pudieron sembrar los usuarios: ", err)
 	}
 
 	r := chi.NewRouter()
@@ -114,4 +145,35 @@ func main() {
 func porIP(r *http.Request) (string, error) {
 	ip := chimiddleware.GetClientIP(r.Context())
 	return httprate.CanonicalizeIP(ip), nil
+}
+
+// aplicarPermisosMinimos crea (o actualiza) el rol de mínimo privilegio para la API
+// y le concede únicamente los permisos estrictamente necesarios tabla por tabla.
+func aplicarPermisosMinimos(db *gorm.DB, rol, clave string) error {
+	claveEsc := strings.ReplaceAll(clave, "'", "''")
+	rolEsc := strings.ReplaceAll(rol, `"`, `""`)
+
+	sentencias := []string{
+		fmt.Sprintf(`DO $$
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '%s') THEN
+				CREATE ROLE "%s" LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+			ELSE
+				ALTER ROLE "%s" WITH LOGIN PASSWORD '%s' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+			END IF;
+		END $$;`, strings.ReplaceAll(rol, "'", "''"), rolEsc, claveEsc, rolEsc, claveEsc),
+		fmt.Sprintf(`REVOKE ALL ON ALL TABLES IN SCHEMA public FROM "%s"`, rolEsc),
+		fmt.Sprintf(`REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM "%s"`, rolEsc),
+		fmt.Sprintf(`GRANT USAGE ON SCHEMA public TO "%s"`, rolEsc),
+		fmt.Sprintf(`GRANT SELECT ON TABLE sucursals, usuarios, clientes, vehiculos, pagos, cuentas TO "%s"`, rolEsc),
+		fmt.Sprintf(`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE reservas TO "%s"`, rolEsc),
+		fmt.Sprintf(`GRANT USAGE, SELECT ON SEQUENCE reservas_id_seq TO "%s"`, rolEsc),
+	}
+
+	for _, sql := range sentencias {
+		if err := db.Exec(sql).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -14,13 +14,27 @@ services:
       retries: 10
       start_period: 3s
 
-  api:
+  migrador:
     build: .
+    command: ["-migrar"]
     depends_on:
       db:
         condition: service_healthy
     environment:
       DATABASE_URL: host=db user=${POSTGRES_USER:-postgres} password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env} dbname=${POSTGRES_DB:-rentcar} port=5432
+      DATABASE_URL_MIGRACION: host=db user=${POSTGRES_USER:-postgres} password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env} dbname=${POSTGRES_DB:-rentcar} port=5432
+      DB_API_USER: ${DB_API_USER:-rentcar_api}
+      DB_API_PASSWORD: ${DB_API_PASSWORD:?Defina DB_API_PASSWORD en .env}
+      CLAVE_FIRMA: ${CLAVE_FIRMA:?Defina CLAVE_FIRMA en .env}
+    restart: "no"
+
+  api:
+    build: .
+    depends_on:
+      migrador:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: host=db user=${DB_API_USER:-rentcar_api} password=${DB_API_PASSWORD:?Defina DB_API_PASSWORD en .env} dbname=${POSTGRES_DB:-rentcar} port=5432
       CLAVE_FIRMA: ${CLAVE_FIRMA:?Defina CLAVE_FIRMA en .env}
       PUERTO: ${PUERTO:-8080}
       TIEMPO_ESPERA_SEGUNDOS: ${TIEMPO_ESPERA_SEGUNDOS:-5}
