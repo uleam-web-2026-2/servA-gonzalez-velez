@@ -123,3 +123,19 @@ Los datos de PostgreSQL se guardan en el volumen nombrado `pgdata` montado en `/
 
 ### D9 · Lo que se publica en la máquina
 `compose.yaml` publica únicamente el puerto de la API (`${PUERTO:-8080}:${PUERTO:-8080}`) para que Bruno y los clientes lleguen en el puerto habitual sin chocar con el contenedor `pg` de la semana 3 (que sigue usando el `5433`). El servicio `db` no publica ningún puerto hacia la máquina anfitriona; cuando necesitemos consultarlo con `psql`, podemos ejecutarlo directamente dentro del contenedor de Compose con `docker compose exec db psql -U postgres -d rentcar`.
+
+
+## Semana 12 · la seguridad de la API
+
+### D1 · Lo que encontramos y cerramos
+
+La búsqueda con `git grep -n -E -f docs/taller12/patrones.txt -- "*.go" ":(exclude)*_test.go"` devolvió **27 líneas** (guardadas en `docs/taller12/auditoria.txt` y revisadas una por una en `docs/taller12/auditoria.md`). De esas 27 líneas, **8 arman SQL con datos que vienen del cliente**:
+
+- `internal/almacen/filas/consultas.sql.go:19` y `:50` (código generado por `sqlc`): usan consultas fijas con parámetros posicionales `$1`..`$7` (`QueryRowContext` y `ExecContext`), e `id` llega convertido a `uint` por `strconv.Atoi`.
+- `internal/almacen/reservas.go:23`, `:32` y `:61` (`First` de cliente, vehículo y reserva): reciben un `id` tipado como `uint` (ya convertido con `strconv.Atoi` en `leerID` o decodificado como entero desde JSON), por lo que GORM lo envía como parámetro numérico y nunca como condición de texto.
+- `internal/almacen/reservas.go:47` y `:55` (`Where("estado = ?", estado)` y `query.Find(&lista)`): el filtro `?estado=` viaja aparte mediante el marcador `?` de GORM, y `limit`/`offset` se validan antes con `strconv.Atoi` como `int`.
+- `internal/sesion/usuarios.go:86` (`Where("nombre = ?", pedido.Usuario)`): el usuario de `POST /login` también se pasa aparte con `?`.
+
+Las demás líneas encontradas corresponden a listados sin entrada del cliente (`Find` de catálogos y `Sembrar`), firmas de la interfaz `DBTX`, mensajes de error o lectura de `r.URL.Query()`. **No hubo consultas vulnerables que cerrar**, por lo que no fue necesario modificar código ni generar `auditoria_despues.txt`.
+
+En la prueba del paso 1.4 (`docs/taller12/inyeccion.txt`), `GET /reservas?estado=pendiente` respondió `200 OK` con **2 reservas** pendientes (`ID` 2 y 7); al enviar el ataque `GET /reservas?estado=' OR 1=1 --`, respondió `200 OK` con `{"ok":true,"datos":[]}` (0 registros, demostrando que el texto se trató como dato y no como SQL); y al enviar `GET /reservas/1%20OR%201=1`, `leerID` lo rechazó antes de tocar la base con `400 Bad Request` (`id_invalido`).

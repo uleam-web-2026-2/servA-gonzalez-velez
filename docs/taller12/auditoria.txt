@@ -1,0 +1,27 @@
+internal/almacen/filas/consultas.sql.go:19:	row := q.db.QueryRowContext(ctx, buscarReserva, id)
+internal/almacen/filas/consultas.sql.go:50:	result, err := q.db.ExecContext(ctx, guardarReserva,
+internal/almacen/filas/db.go:13:	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+internal/almacen/filas/db.go:15:	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
+internal/almacen/filas/db.go:16:	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
+internal/almacen/reservas.go:23:	err := a.DB.First(&cliente, id).Error
+internal/almacen/reservas.go:32:	err := a.DB.First(&vehiculo, id).Error
+internal/almacen/reservas.go:47:		query = query.Where("estado = ?", estado)
+internal/almacen/reservas.go:55:	err := query.Find(&lista).Error
+internal/almacen/reservas.go:61:	err := a.DB.First(&reserva, id).Error
+internal/almacen/reservas.go:79:	err := a.DB.Debug().Preload("Reservas").Find(&lista).Error
+internal/almacen/reservas.go:85:	err := a.DB.Debug().Find(&lista).Error
+internal/almacen/reservas.go:91:	err := a.DB.Debug().Find(&lista).Error
+internal/almacen/reservas.go:97:	err := a.DB.Debug().Find(&lista).Error
+internal/almacen/reservas.go:103:	err := a.DB.Debug().Find(&lista).Error
+internal/config/config.go:33:		return c, fmt.Errorf("falta DATABASE_URL " +
+internal/config/config.go:39:		return c, fmt.Errorf("falta CLAVE_FIRMA " +
+internal/config/config.go:55:		return c, fmt.Errorf("TIEMPO_ESPERA_SEGUNDOS debe ser un entero "+
+internal/reservas/estado.go:33:			"estado no permitido: "+pedido.Estado)
+internal/reservas/estado.go:53:			"de "+reserva.Estado+" no se puede pasar a "+pedido.Estado)
+internal/reservas/manejadores.go:96:	estado := r.URL.Query().Get("estado")
+internal/reservas/manejadores.go:330:	limitStr := r.URL.Query().Get("limit")
+internal/reservas/manejadores.go:331:	offsetStr := r.URL.Query().Get("offset")
+internal/sesion/guardia.go:60:					"solo el rol "+rol+" puede hacer esto")
+internal/sesion/usuarios.go:55:		db.Where("nombre = ?", e.nombre).Limit(1).Find(&u)
+internal/sesion/usuarios.go:86:	err := m.DB.Where("nombre = ?", pedido.Usuario).Limit(1).Find(&u).Error
+main.go:89:		Addr:         ":" + cfg.Puerto,

@@ -1,0 +1,23 @@
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Date: Fri, 20 Nov 2026 03:47:17 GMT
+Content-Length: 264
+
+{"ok":true,"datos":[{"ID":2,"ClienteID":2,"VehiculoID":1,"FechaInicio":"2026-10-01","FechaFin":"2026-10-03","Total":70,"Estado":"pendiente"},{"ID":7,"ClienteID":1,"VehiculoID":1,"FechaInicio":"2026-11-10","FechaFin":"2026-11-12","Total":90,"Estado":"pendiente"}]}
+
+
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Date: Fri, 20 Nov 2026 03:47:17 GMT
+Content-Length: 23
+
+{"ok":true,"datos":[]}
+
+
+HTTP/1.1 400 Bad Request
+Content-Type: application/json; charset=utf-8
+Date: Fri, 20 Nov 2026 03:47:17 GMT
+Content-Length: 93
+
+{"ok":false,"error":{"codigo":"id_invalido","mensaje":"El id debe ser un número positivo"}}
+
