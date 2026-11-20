@@ -149,3 +149,19 @@ El middleware `cors.Handler(...)` se colocó **arriba de todo**, inmediatamente 
 Al probar con `curl` un `PATCH /reservas/8` enviando `Origin: http://malo.example` y un token válido de `luis` (`docs/taller12/cors_curl_ejecuta.txt`), el servidor respondió `200 OK` y cambió la reserva a `confirmada`. Esto confirma que **CORS no es un muro en el servidor sino una política que hace cumplir el navegador**: `curl` y Bruno ignoran las cabeceras `Access-Control-*`, por lo que la seguridad real de esa operación depende del token JWT y del control de rol (`SoloRol`).
 
 Cuando publiquemos el front en producción, deberemos agregar o reemplazar `http://localhost:5173` por el origen público exacto (esquema `https://`, dominio y puerto si aplica, sin barra final), idealmente leyéndolo desde una variable de entorno (por ejemplo `ORIGEN_FRONT`) en lugar de dejarlo fijo en el código.
+
+### D3 · El límite del login
+
+Configuramos el límite de intentos en **`5` peticiones por ventana de `1 minuto` por IP** mediante `httprate.LimitBy(5, time.Minute, porIP)`. Elegimos 5 intentos por minuto porque es suficiente margen para un usuario legítimo que se equivoque al escribir su contraseña un par de veces (o para iniciar sesión con dos cuentas distintas durante pruebas como `ana` y `luis`), pero frena ataques de fuerza bruta y relleno de credenciales automatizados.
+
+El middleware se montó **solo en `POST /login`** usando `r.With(...)` y no de forma global con `r.Use(...)`: ponerlo en todo el router haría que las operaciones normales autenticadas (o las 6 peticiones consecutivas del flujo del hito 2) chocaran contra el tope de 5 por minuto y devolvieran `429`.
+
+En la prueba de ráfaga de 7 intentos consecutivos (`docs/taller12/rafaga.txt`), las peticiones 1 a 5 devolvieron `401 Unauthorized` con `X-Ratelimit-Limit: 5` y `X-Ratelimit-Remaining` descendiendo de `4` a `0`. El primer **`429 Too Many Requests`** llegó en la **6.ª petición** (y se repitió en la 7.ª), incluyendo la cabecera **`Retry-After: 60`** y `X-Ratelimit-Remaining: 0`.
+
+### D4 · Detrás de un proxy
+
+El middleware `chimiddleware.ClientIPFromRemoteAddr` obtiene la IP directamente de **`r.RemoteAddr`**, es decir, del socket TCP de la conexión que llega al servidor Go, sin leer cabeceras HTTP.
+
+Si publicáramos la API detrás de un proxy reverso (como Nginx, Caddy, Cloudflare o un balanceador de carga en la nube) sin ajustar esto, todas las conexiones TCP hacia nuestra API provendrían de la misma IP interna del proxy. En consecuencia, `porIP` agruparía a todos los usuarios bajo la misma clave y bastaría con que una sola persona hiciera 5 intentos en `/login` para bloquear el inicio de sesión de todos los demás usuarios durante un minuto.
+
+Aun así, no se puede confiar ciegamente en cabeceras como `X-Forwarded-For` o `X-Real-IP`, porque cualquier cliente puede enviar esas cabeceras falsificadas con IPs distintas en cada petición y evadir por completo el límite de tasa. Cuando haya un proxy reverso en producción, la solución segura es aceptar `X-Forwarded-For` **únicamente** si la conexión proviene de la IP confiable del proxy (y tomar la IP que agregó el proxy, no la que pudo inyectar el cliente).
