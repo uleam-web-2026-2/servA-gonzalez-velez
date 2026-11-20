@@ -139,3 +139,13 @@ La búsqueda con `git grep -n -E -f docs/taller12/patrones.txt -- "*.go" ":(excl
 Las demás líneas encontradas corresponden a listados sin entrada del cliente (`Find` de catálogos y `Sembrar`), firmas de la interfaz `DBTX`, mensajes de error o lectura de `r.URL.Query()`. **No hubo consultas vulnerables que cerrar**, por lo que no fue necesario modificar código ni generar `auditoria_despues.txt`.
 
 En la prueba del paso 1.4 (`docs/taller12/inyeccion.txt`), `GET /reservas?estado=pendiente` respondió `200 OK` con **2 reservas** pendientes (`ID` 2 y 7); al enviar el ataque `GET /reservas?estado=' OR 1=1 --`, respondió `200 OK` con `{"ok":true,"datos":[]}` (0 registros, demostrando que el texto se trató como dato y no como SQL); y al enviar `GET /reservas/1%20OR%201=1`, `leerID` lo rechazó antes de tocar la base con `400 Bad Request` (`id_invalido`).
+
+### D2 · El origen que puede leer nuestras respuestas
+
+Configuramos `AllowedOrigins: []string{"http://localhost:5173"}` (sin barra final), que es el origen local donde corre el front con Vite. No usamos `"*"` porque aplicamos principio de mínimo privilegio: con `"*"` cualquier página maliciosa en otro dominio podría leer las respuestas de nuestra API desde el navegador de un usuario, además de impedir un control estricto sobre qué cliente web está autorizado.
+
+El middleware `cors.Handler(...)` se colocó **arriba de todo**, inmediatamente después de `r := chi.NewRouter()` y antes de `middleware.Registro`, el guardia de autenticación (`tokens.Autenticar`) y las rutas. Esto es necesario porque las peticiones previas (*preflight* `OPTIONS`) que envía el navegador no llevan cabecera `Authorization` ni tienen manejador propio: si pasaran antes por el guardia recibirían `401 Unauthorized`, y si se aplicaran solo con `r.With(...)` recibirían `405 Method Not Allowed`.
+
+Al probar con `curl` un `PATCH /reservas/8` enviando `Origin: http://malo.example` y un token válido de `luis` (`docs/taller12/cors_curl_ejecuta.txt`), el servidor respondió `200 OK` y cambió la reserva a `confirmada`. Esto confirma que **CORS no es un muro en el servidor sino una política que hace cumplir el navegador**: `curl` y Bruno ignoran las cabeceras `Access-Control-*`, por lo que la seguridad real de esa operación depende del token JWT y del control de rol (`SoloRol`).
+
+Cuando publiquemos el front en producción, deberemos agregar o reemplazar `http://localhost:5173` por el origen público exacto (esquema `https://`, dominio y puerto si aplica, sin barra final), idealmente leyéndolo desde una variable de entorno (por ejemplo `ORIGEN_FRONT`) en lugar de dejarlo fijo en el código.
